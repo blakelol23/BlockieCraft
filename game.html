@@ -164,7 +164,7 @@
     #armorCol{display:flex;flex-direction:column;gap:4px}
     #playerCanvas{
       width:96px;height:128px;
-      margin-top:0;
+      margin-top:6px;
       align-self:start;
       justify-self:center;
       background:#101010;
@@ -179,7 +179,7 @@
     #craftArea{
       display:flex;flex-direction:column;
       margin-left:0;
-      padding-top:0;
+      padding-top:6px;
       align-items:flex-start;
       justify-content:flex-start;
       justify-self:start;
@@ -188,13 +188,13 @@
       gap:5px;
     }
     #craftArea .inv-lbl{margin-top:0;font-size:22px;line-height:1;color:#2a2a2a;font-weight:700}
-    #craftRow{margin-top:1px}
+    #craftRow{margin-top:6px}
     #craftRow,#tableRow{display:flex;align-items:center;gap:6px}
     #craftGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
     #tableGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px}
     #craftArrowArea{font-size:18px;color:#4a4a4a;padding:0 2px}
-    #craftUtilityRow{display:flex;align-items:flex-end;gap:8px}
-    #offhandSlotWrap{display:flex;flex-direction:column;align-items:center;gap:3px}
+    #craftUtilityRow{display:flex;align-items:flex-start;gap:8px;margin-top:4px}
+    #offhandSlotWrap{display:flex;flex-direction:column;align-items:center;gap:3px;margin-top:2px}
     #offhandSlotWrap .inv-lbl{
       margin:0;
       font-size:10px;
@@ -208,6 +208,7 @@
     #recipeBookBtn{
       width:34px;
       height:34px;
+      margin-top:2px;
       padding:0;
       border-top:2px solid #d6ffd0;
       border-left:2px solid #d6ffd0;
@@ -245,29 +246,94 @@
       color:#fff;text-shadow:1px 1px 0 #000;pointer-events:none;
     }
     .inv-slot.sel{outline:2px solid #f4ef9a;outline-offset:-2px;box-shadow:inset 0 0 0 1px #2a2a2a}
-    .armor-icon{position:absolute;font-size:12px;opacity:.45;pointer-events:none;color:#1f1f1f;filter:grayscale(1)}
+    .armor-icon{
+      position:absolute;inset:0;
+      display:flex;align-items:center;justify-content:center;
+      opacity:.70;pointer-events:none;
+      color:#1f1f1f;filter:grayscale(.1);
+    }
+    .armor-icon svg{
+      width:18px;height:18px;display:block;
+      stroke:#2f2f2f;fill:none;stroke-width:1.8;
+      stroke-linecap:round;stroke-linejoin:round;
+    }
+    #offhandSlot .armor-icon{opacity:.55;filter:grayscale(1)}
+    #offhandSlot .armor-icon svg{stroke:#5a5a5a}
     #invMain,#tableInvRows,#chestStorageRows,#chestInvRows,#furnaceInvRows{display:flex;flex-direction:column}
     #invMain{margin-top:8px}
     .inv-row{display:flex;gap:4px;margin-bottom:4px}
     #invHotbarRow,#tableHotbarRow,#chestHotbarRow,#furnaceHotbarRow{margin-top:8px}
     #invHotbarRow{padding-top:6px;border-top:2px solid rgba(66,66,66,0.25)}
-    #furnaceRow{display:flex;align-items:flex-start;gap:10px;margin:2px 0 4px}
-    #furnaceInputCol{display:flex;flex-direction:column;gap:6px}
-    #furnaceMeters{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;margin-top:5px}
-    #furnaceFlameMeter,#furnaceArrowMeter{
-      width:24px;height:12px;background:#6d6d6d;
-      border-top:2px solid #ffffff;border-left:2px solid #ffffff;
-      border-right:2px solid #555555;border-bottom:2px solid #555555;
+    #furnaceWindow{min-width:338px}
+    #furnaceWindow .furnace-title{margin:0 0 8px 0;text-align:center;font-size:16px;letter-spacing:.02em}
+    #furnaceRow{
+      display:grid;
+      grid-template-columns:34px 34px 10px 44px 34px;
+      grid-template-rows:34px 18px 34px;
+      align-items:center;
+      justify-items:center;
+      column-gap:8px;
+      row-gap:6px;
+      margin:0 0 6px;
+    }
+    #furnaceRecipeBookBtn{
+      grid-column:1;grid-row:2;
+      width:34px;height:34px;
+      padding:0;
+      border-top:2px solid #d6ffd0;border-left:2px solid #d6ffd0;
+      border-right:2px solid #2f6c2a;border-bottom:2px solid #2f6c2a;
+      border-radius:0;background:linear-gradient(180deg,#8fd77a 0%,#62aa54 100%);
+      color:#0e2c12;font-size:16px;line-height:1;cursor:pointer;
+      display:grid;place-items:center;
+    }
+    #furnaceRecipeBookBtn:hover{filter:brightness(1.05)}
+    #furnaceRecipeBookBtn:active{filter:brightness(0.95);transform:translateY(1px)}
+    #furnaceInput{grid-column:2;grid-row:1}
+    #furnaceFuel{grid-column:2;grid-row:3}
+    #furnaceFlameMeter{
+      grid-column:2;grid-row:2;
+      width:18px;height:16px;
       position:relative;overflow:hidden;
+      border-top:1px solid #ffffff;border-left:1px solid #ffffff;
+      border-right:1px solid #555555;border-bottom:1px solid #555555;
+      background:#6d6d6d;
     }
-    #furnaceArrowMeter{width:30px;height:12px}
-    #furnaceFlameFill,#furnaceArrowFill{
-      position:absolute;left:0;bottom:0;width:100%;height:0%;
+    #furnaceFlameMeter::before{
+      content:"";
+      position:absolute;left:2px;right:2px;top:2px;bottom:2px;
+      background:#3f3f3f;
+      clip-path:polygon(50% 0%,74% 30%,66% 57%,50% 100%,34% 57%,26% 30%);
+    }
+    #furnaceFlameFill{
+      position:absolute;left:2px;right:2px;bottom:2px;height:0%;
       background:linear-gradient(180deg,#ffef9b 0%,#ffb14e 55%,#d56c20 100%);
-      transition:height 90ms linear,width 90ms linear;
+      clip-path:polygon(50% 0%,74% 30%,66% 57%,50% 100%,34% 57%,26% 30%);
+      transition:height 90ms linear;
+      z-index:1;
     }
-    #furnaceArrowFill{height:100%;width:0%;background:linear-gradient(90deg,#f4e4c5 0%,#cc9960 100%)}
-    #furnaceOutputWrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+    #furnaceArrowMeter{
+      grid-column:4;grid-row:2;
+      width:44px;height:16px;
+      position:relative;overflow:hidden;
+      border-top:1px solid #ffffff;border-left:1px solid #ffffff;
+      border-right:1px solid #555555;border-bottom:1px solid #555555;
+      background:#6d6d6d;
+    }
+    #furnaceArrowMeter::before{
+      content:"";
+      position:absolute;left:3px;right:3px;top:3px;bottom:3px;
+      background:#454545;
+      clip-path:polygon(0 30%,64% 30%,64% 0,100% 50%,64% 100%,64% 70%,0 70%);
+    }
+    #furnaceArrowFill{
+      position:absolute;left:3px;top:3px;bottom:3px;width:0%;
+      background:linear-gradient(90deg,#f4e4c5 0%,#cc9960 100%);
+      clip-path:polygon(0 30%,64% 30%,64% 0,100% 50%,64% 100%,64% 70%,0 70%);
+      transition:width 90ms linear;
+      z-index:1;
+    }
+    #furnaceOutput{grid-column:5;grid-row:2}
+    #furnaceInvRows{margin-top:2px}
     #dragGhost{position:fixed;pointer-events:none;z-index:9999;display:none;transform:translate(-50%,-50%)}
     #dragGhost canvas{width:32px;height:32px;image-rendering:pixelated}
     .dur-bar{position:absolute;bottom:1px;left:2px;right:2px;height:2px;pointer-events:none}
@@ -795,7 +861,12 @@
             <div id="offhandSlotWrap">
               <div class="inv-lbl">Offhand</div>
               <div id="offhandSlot" class="inv-slot" title="Offhand (coming soon)">
-                <span class="armor-icon">🛡</span>
+                <span class="armor-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="img" focusable="false">
+                    <path d="M12 3l7 3v6c0 4.8-3.2 8.1-7 9-3.8-.9-7-4.2-7-9V6z"/>
+                    <path d="M12 6v12"/>
+                  </svg>
+                </span>
               </div>
             </div>
             <button id="recipeBookBtn" type="button" title="Recipe Book">📗</button>
@@ -843,20 +914,14 @@
 
   <div id="furnaceOverlay">
     <div id="furnaceWindow">
-      <div class="inv-lbl">Furnace</div>
+      <div class="inv-lbl furnace-title">Furnace</div>
       <div id="furnaceRow">
-        <div id="furnaceInputCol">
-          <div id="furnaceInput" class="inv-slot" title="Input"></div>
-          <div id="furnaceFuel" class="inv-slot" title="Fuel"></div>
-        </div>
-        <div id="furnaceMeters">
-          <div id="furnaceFlameMeter"><div id="furnaceFlameFill"></div></div>
-          <div id="furnaceArrowMeter"><div id="furnaceArrowFill"></div></div>
-        </div>
-        <div id="furnaceOutputWrap">
-          <div class="inv-lbl" style="margin:0 0 2px 0;font-size:11px;">Output</div>
-          <div id="furnaceOutput" class="inv-slot" title="Output"></div>
-        </div>
+        <button id="furnaceRecipeBookBtn" type="button" title="Recipe Book">📗</button>
+        <div id="furnaceInput" class="inv-slot" title="Input"></div>
+        <div id="furnaceFlameMeter" title="Burn Progress"><div id="furnaceFlameFill"></div></div>
+        <div id="furnaceFuel" class="inv-slot" title="Fuel"></div>
+        <div id="furnaceArrowMeter" title="Cook Progress"><div id="furnaceArrowFill"></div></div>
+        <div id="furnaceOutput" class="inv-slot" title="Output"></div>
       </div>
       <div id="furnaceInvRows">
         <div class="inv-lbl">Inventory</div>
@@ -1803,6 +1868,10 @@ const dirtyQ=[];
 const dirtySet=new Set();
 let activeChunkJob=null;
 let lastStreamOx=null,lastStreamOz=null;
+const CHUNK_QUEUE_MIN_CAP=42;
+const CHUNK_QUEUE_MAX_CAP=120;
+const CHUNK_STREAM_TOPUP_MIN=12;
+const CHUNK_STREAM_TOPUP_MAX=54;
 const overrides=new Map();
 const _nearHM=[];
 const particles=[];
@@ -1812,6 +1881,68 @@ const keys=new Set();
 let nextChunkWorkAt=0;
 const worldRoot=new THREE.Group();
 scene.add(worldRoot);
+
+function effectiveStreamRadius(){
+  const rd=THREE.MathUtils.clamp(Math.round(S.renderDist)||3,2,8);
+  const pressure=chunkQueuePressure();
+  const frameMs=lagDebug.lastFrameMs||16;
+  let eff=rd;
+  if(pressure>130||frameMs>30)eff=rd-2;
+  else if(pressure>90||frameMs>24)eff=rd-1;
+  return THREE.MathUtils.clamp(eff,2,rd);
+}
+
+function desiredGenQueueCap(){
+  const effRd=effectiveStreamRadius();
+  const base=24+effRd*11;
+  return THREE.MathUtils.clamp(base,CHUNK_QUEUE_MIN_CAP,CHUNK_QUEUE_MAX_CAP);
+}
+
+function desiredStreamTopupCap(){
+  return THREE.MathUtils.clamp(Math.floor(desiredGenQueueCap()*0.45),CHUNK_STREAM_TOPUP_MIN,CHUNK_STREAM_TOPUP_MAX);
+}
+
+function compactGenQueueToRange(ox,oz,r){
+  let gw=0;
+  for(let i=0;i<genQueue.length;i++){
+    const e=genQueue[i];
+    if(chunkInRange(e.cx,e.cz,ox,oz,r))genQueue[gw++]=e;
+    else genSet.delete(ck(e.cx,e.cz));
+  }
+  genQueue.length=gw;
+}
+
+function trimGenQueueToCap(ox,oz,cap=desiredGenQueueCap()){
+  if(genQueue.length<=cap)return;
+  genQueue.sort((a,b)=>Math.hypot(a.cx-ox,a.cz-oz)-Math.hypot(b.cx-ox,b.cz-oz));
+  for(let i=cap;i<genQueue.length;i++){
+    const e=genQueue[i];
+    genSet.delete(ck(e.cx,e.cz));
+  }
+  genQueue.length=cap;
+}
+
+function queueMissingChunksNear(ox,oz,maxAdds=Infinity,radius=effectiveStreamRadius()){
+  const targetCap=desiredGenQueueCap();
+  if(genQueue.length>=targetCap||maxAdds<=0)return 0;
+
+  const candidates=[];
+  for(let dz=-radius;dz<=radius;dz++)for(let dx=-radius;dx<=radius;dx++){
+    const cx=ox+dx,cz=oz+dz;
+    const k=ck(cx,cz);
+    if(chunkMap.has(k)||genSet.has(k))continue;
+    candidates.push({cx,cz,d:Math.hypot(dx,dz)});
+  }
+  if(!candidates.length)return 0;
+
+  candidates.sort((a,b)=>a.d-b.d);
+  const addLimit=Math.min(maxAdds,targetCap-genQueue.length,candidates.length);
+  let added=0;
+  for(let i=0;i<addLimit;i++){
+    if(queueChunk(candidates[i].cx,candidates[i].cz))added++;
+  }
+  return added;
+}
 
 // ── Lighting ─────────────────────────────────────────────────
 const hemiLight=new THREE.HemisphereLight(0xc8e8ff,0x4a6830,1.35);
@@ -2777,16 +2908,52 @@ function buildFPArm(){
   return grp;
 }
 
+function createArmorIconSvg(kind){
+  const ns="http://www.w3.org/2000/svg";
+  const svg=document.createElementNS(ns,"svg");
+  svg.setAttribute("viewBox","0 0 24 24");
+  svg.setAttribute("aria-hidden","true");
+
+  const add=(d)=>{
+    const p=document.createElementNS(ns,"path");
+    p.setAttribute("d",d);
+    svg.appendChild(p);
+  };
+
+  if(kind==="helmet"){
+    add("M4 10V7l3-3h10l3 3v3");
+    add("M7 10v10h10V10");
+    add("M9 13h6");
+  }else if(kind==="chestplate"){
+    add("M8 4h8l3 3-2 4v9H7v-9L5 7z");
+    add("M10 8h4");
+  }else if(kind==="leggings"){
+    add("M7 4h10v6l-2 2v8h-3v-8h-0v8H9v-8l-2-2z");
+    add("M12 4v8");
+  }else{
+    add("M7 5v8H5v6h6v-5h2v5h6v-6h-2V5");
+  }
+
+  return svg;
+}
+
+function createArmorIconElement(kind){
+  const icon=document.createElement("span");
+  icon.className="armor-icon";
+  icon.appendChild(createArmorIconSvg(kind));
+  return icon;
+}
+
 // ═══════════════════════════════
 //  INVENTORY UI
 // ═══════════════════════════════
 function buildInventoryUI(){
   // Armor
   $armorCol.innerHTML="";
-  ["◔","▣","▤","▥"].forEach((ic,i)=>{
+  ["helmet","chestplate","leggings","boots"].forEach((kind,i)=>{
     const s=mkSlot("armor",i);
-    const lbl=document.createElement("span");lbl.className="armor-icon";lbl.textContent=ic;
-    s.appendChild(lbl);$armorCol.appendChild(s);
+    s.appendChild(createArmorIconElement(kind));
+    $armorCol.appendChild(s);
   });
   // Craft grid
   $craftGrid.innerHTML="";
@@ -2931,6 +3098,7 @@ function onSlotMD(e,type,idx){
       dragItem=mkItem(cur.id,half);
       const rem=cur.count-half;
       setSlot(type,idx,rem>0?mkItem(cur.id,rem):null);
+      dragFrom={type,idx};
     } else {
       // Left click: pick up whole stack
       dragItem={id:cur.id,count:cur.count};
@@ -2993,6 +3161,12 @@ function onSlotMD(e,type,idx){
 function onSlotMU(e,type,idx){
   if(dragItem===null||e.button!==0||!dragMoved) return;
   if(dragFrom&&dragFrom.type===type&&dragFrom.idx===idx) return;
+
+  if(type==="furnace"&&!_canPlaceFurnaceSlot(idx,dragItem)){
+    showMsg(idx===FURNACE_SLOT_FUEL?"Needs valid fuel":"Cannot smelt that item",700);
+    refreshInvUI();
+    return;
+  }
 
   const cur=getSlot(type,idx);
   if(!cur){
@@ -3091,29 +3265,31 @@ function updateTableCraft(){
 }
 function takeCraftResult(){
   if(!craftResult)return;
+  const result={id:craftResult.id,count:craftResult.count,dur:craftResult.dur};
   const ei=invSlots.findIndex(s=>!s);
   if(ei<0){showMsg("Inventory full!",1200);return;}
   const r=matchRecipe(craftSlots,RECIPES_2x2);
   if(!r)return;
   consumeRecipe(craftSlots,r);
-  const item=mkItem(craftResult.id,craftResult.count);
-  if(craftResult.dur!==undefined)item.dur=craftResult.dur;
+  const item=mkItem(result.id,result.count);
+  if(result.dur!==undefined)item.dur=result.dur;
   addToInventory2(item);
   updateCraft();refreshInvUI();
-  const nm=getItemName(craftResult.id);
-  showMsg(`Crafted ${nm} ×${craftResult.count}`,700);
+  const nm=getItemName(result.id);
+  showMsg(`Crafted ${nm} ×${result.count}`,700);
 }
 function takeTableResult(){
   if(!tableResult)return;
+  const result={id:tableResult.id,count:tableResult.count,dur:tableResult.dur};
   const r=matchRecipe(tableSlots,RECIPES_3x3);
   if(!r)return;
   consumeRecipe(tableSlots,r);
-  const item=mkItem(tableResult.id,tableResult.count);
-  if(tableResult.dur!==undefined)item.dur=tableResult.dur;
+  const item=mkItem(result.id,result.count);
+  if(result.dur!==undefined)item.dur=result.dur;
   addToInventory2(item);
   updateTableCraft();refreshTableUI();
-  const nm=getItemName(tableResult.id);
-  showMsg(`Crafted ${nm} ×${tableResult.count}`,700);
+  const nm=getItemName(result.id);
+  showMsg(`Crafted ${nm} ×${result.count}`,700);
 }
 function getItemName(id){
   if(id>=200)return ITEM_INFO[id]?.name??`Item ${id}`;
@@ -3293,6 +3469,15 @@ function closeFurnace(){
   setTimeout(()=>{if(!tableOpen&&!invOpen&&!chestOpen&&!furnaceOpen&&!settingsOpen)safeRequestPointerLock();},80);
 }
 function buildFurnaceUI(){
+  const furnaceRecipeBookBtn=document.getElementById("furnaceRecipeBookBtn");
+  if(furnaceRecipeBookBtn&&!furnaceRecipeBookBtn.dataset.bound){
+    furnaceRecipeBookBtn.dataset.bound="1";
+    furnaceRecipeBookBtn.addEventListener("click",e=>{
+      e.preventDefault();
+      showMsg("Furnace recipe book coming soon",900);
+    });
+  }
+
   if(!$furnaceInput.dataset.bound){
     $furnaceInput.dataset.bound="1";
     $furnaceInput.dataset.slotType="furnace";
@@ -7969,68 +8154,96 @@ function chunkInRange(cx,cz,ox,oz,r){
 }
 function seedChunks(){
   const ox=Math.floor(player.pos.x/S.chunkSize),oz=Math.floor(player.pos.z/S.chunkSize);
-  const list=[];
-  for(let dz=-S.renderDist;dz<=S.renderDist;dz++)for(let dx=-S.renderDist;dx<=S.renderDist;dx++)
-    list.push({cx:ox+dx,cz:oz+dz,d:Math.hypot(dx,dz)});
-  list.sort((a,b)=>a.d-b.d);
-  if(!list.length)return;
-  const first=list.shift();
+  const radius=effectiveStreamRadius();
   lagDebug.chunkReason="seed-priority";
+  queueMissingChunksNear(ox,oz,Math.max(8,desiredStreamTopupCap()),radius);
+
   if(!activeChunkJob){
-    activeChunkJob=createChunkJob(first.cx,first.cz,"seed-priority");
-    if(advanceChunkJob(activeChunkJob,Math.max(0.6,getChunkBudgetMs(true))))activeChunkJob=null;
-  }else{
-    queueChunk(first.cx,first.cz);
+    const centerK=ck(ox,oz);
+    if(!chunkMap.has(centerK)&&!genSet.has(centerK)){
+      activeChunkJob=createChunkJob(ox,oz,"seed-priority");
+      if(advanceChunkJob(activeChunkJob,Math.max(0.6,getChunkBudgetMs(true))))activeChunkJob=null;
+    }else if(genQueue.length){
+      const px=player.pos.x/S.chunkSize,pz=player.pos.z/S.chunkSize;
+      let bestI=0,bestD=Infinity;
+      for(let i=0;i<genQueue.length;i++){
+        const q=genQueue[i];
+        const d=Math.hypot(q.cx-px,q.cz-pz);
+        if(d<bestD){bestD=d;bestI=i;}
+      }
+      const nxt=genQueue[bestI];
+      genQueue[bestI]=genQueue[genQueue.length-1];
+      genQueue.length--;
+      genSet.delete(ck(nxt.cx,nxt.cz));
+      activeChunkJob=createChunkJob(nxt.cx,nxt.cz,"seed-priority");
+      if(advanceChunkJob(activeChunkJob,Math.max(0.6,getChunkBudgetMs(true))))activeChunkJob=null;
+    }
   }
-  list.forEach(({cx,cz})=>queueChunk(cx,cz));
+
   lastStreamOx=ox;lastStreamOz=oz;
 }
 function streamChunks(){
   const ox=Math.floor(player.pos.x/S.chunkSize),oz=Math.floor(player.pos.z/S.chunkSize);
-  if(ox===lastStreamOx&&oz===lastStreamOz)return;
+  const radius=effectiveStreamRadius();
+
+  if(ox===lastStreamOx&&oz===lastStreamOz){
+    if(genQueue.length<Math.max(8,Math.floor(desiredGenQueueCap()*0.32))){
+      queueMissingChunksNear(ox,oz,desiredStreamTopupCap(),radius);
+    }
+    return;
+  }
+
   lastStreamOx=ox;lastStreamOz=oz;
-  const rd=S.renderDist;
-  // Queue missing chunks within render distance
-  for(let dz=-rd;dz<=rd;dz++)for(let dx=-rd;dx<=rd;dx++)queueChunk(ox+dx,oz+dz);
+
+  // Queue missing chunks in bounded batches near the player.
+  queueMissingChunksNear(ox,oz,Math.max(desiredStreamTopupCap(),Math.floor(desiredGenQueueCap()*0.6)),radius);
+
   // Unload chunks beyond render distance + 1 buffer (prevents boundary thrashing)
-  const ud=rd+1;
+  const pressure=chunkQueuePressure();
+  const ud=radius+(pressure>desiredGenQueueCap()*0.7?0:1);
   const toUnload=[];
   for(const[k,c]of chunkMap){
     if(!chunkInRange(c.cx,c.cz,ox,oz,ud))toUnload.push(k);
   }
   for(let i=0;i<toUnload.length;i++)unloadChunk(toUnload[i]);
   // Purge stale genQueue entries beyond unload distance
-  let gw=0;
-  for(let i=0;i<genQueue.length;i++){
-    const e=genQueue[i];
-    if(chunkInRange(e.cx,e.cz,ox,oz,ud)){genQueue[gw++]=e;}
-    else genSet.delete(ck(e.cx,e.cz));
-  }
-  genQueue.length=gw;
+  compactGenQueueToRange(ox,oz,ud);
+  trimGenQueueToCap(ox,oz);
 }
-function queueChunk(cx,cz){
-  const k=ck(cx,cz);if(chunkMap.has(k)||genSet.has(k))return;
+function queueChunk(cx,cz,force=false){
+  const k=ck(cx,cz);if(chunkMap.has(k)||genSet.has(k))return false;
+  if(!force&&genQueue.length>=desiredGenQueueCap())return false;
   genQueue.push({cx,cz});genSet.add(k);
+  return true;
 }
 function processGenQueue(){
+  const pox=Math.floor(player.pos.x/S.chunkSize),poz=Math.floor(player.pos.z/S.chunkSize);
+  const activeRange=effectiveStreamRadius()+(chunkQueuePressure()>desiredGenQueueCap()*0.7?0:1);
+
   if(activeChunkJob){
     // Abort in-progress job if its chunk went out of range
-    const aox=Math.floor(player.pos.x/S.chunkSize),aoz=Math.floor(player.pos.z/S.chunkSize);
-    if(!chunkInRange(activeChunkJob.cx,activeChunkJob.cz,aox,aoz,S.renderDist+1)){
+    if(!chunkInRange(activeChunkJob.cx,activeChunkJob.cz,pox,poz,activeRange)){
       activeChunkJob=null;return;
     }
     const budgetMs=getChunkBudgetMs(true);
     if(advanceChunkJob(activeChunkJob,budgetMs))activeChunkJob=null;
     return;
   }
+
+  if(genQueue.length<Math.max(8,Math.floor(desiredGenQueueCap()*0.25))){
+    queueMissingChunksNear(pox,poz,desiredStreamTopupCap(),effectiveStreamRadius());
+  }
+  trimGenQueueToCap(pox,poz);
+
   if(!genQueue.length||lagDebug.lastFrameMs>20||!reserveChunkWork())return;
   const px=player.pos.x/S.chunkSize,pz=player.pos.z/S.chunkSize;
   const cox=Math.floor(px),coz=Math.floor(pz);
+  const keepRange=effectiveStreamRadius()+(chunkQueuePressure()>desiredGenQueueCap()*0.7?0:1);
   // Find closest in-range chunk; compact out-of-range entries
   let bi=-1,bd=Infinity,gw2=0;
   for(let i=0;i<genQueue.length;i++){
     const c=genQueue[i];
-    if(!chunkInRange(c.cx,c.cz,cox,coz,S.renderDist+1)){
+    if(!chunkInRange(c.cx,c.cz,cox,coz,keepRange)){
       genSet.delete(ck(c.cx,c.cz));continue;
     }
     genQueue[gw2]=c;
@@ -8473,18 +8686,30 @@ function flushDirty(){
   if(advanceChunkJob(activeChunkJob,dirtyBudget))activeChunkJob=null;
 }
 
+function chunkVisibilityDistanceWorld(){
+  const pressure=chunkQueuePressure();
+  const frameMs=lagDebug.lastFrameMs||16;
+  const base=(S.renderDist+1)*S.chunkSize;
+  let scale=1;
+  if(pressure>120||frameMs>30)scale=0.72;
+  else if(pressure>90||frameMs>24)scale=0.82;
+  else if(pressure>60||frameMs>20)scale=0.9;
+  return Math.max(S.chunkSize*2.4,base*scale);
+}
+
 function isChunkInFrustumRange(c){
   // Use tight AABB frustum test — avoids the old sphere+dot-product bug where
   // chunks vanished when looking straight down from underground or high up.
   const ox=c.cx*S.chunkSize,oz=c.cz*S.chunkSize;
+  const topY=Math.min(S.worldH,(Number.isFinite(c.topY)?c.topY:S.worldH)+4);
   _chunkBox.min.set(ox,0,oz);
-  _chunkBox.max.set(ox+S.chunkSize,S.worldH,oz+S.chunkSize);
+  _chunkBox.max.set(ox+S.chunkSize,topY,oz+S.chunkSize);
   if(!_frustum.intersectsBox(_chunkBox))return false;
   // Distance cull (XZ only, Y irrelevant for chunks that span full world height)
   const px=camera.position.x,pz=camera.position.z;
   const cx2=ox+S.chunkSize*0.5,cz2=oz+S.chunkSize*0.5;
   const dSq=(cx2-px)*(cx2-px)+(cz2-pz)*(cz2-pz);
-  const md=(S.renderDist+1)*S.chunkSize;
+  const md=chunkVisibilityDistanceWorld();
   return dSq<=md*md;
 }
 
@@ -8511,7 +8736,8 @@ function updateChunkOcclusion(nowMs){
   const camX=camera.position.x;
   const camY=camera.position.y;
   const camZ=camera.position.z;
-  const nearAlwaysVisible=S.chunkSize*CHUNK_OCCLUSION_NEAR_DIST_CHUNKS;
+  const nearMul=chunkQueuePressure()>desiredGenQueueCap()*0.75?1.08:1.35;
+  const nearAlwaysVisible=(S.chunkSize*CHUNK_OCCLUSION_NEAR_DIST_CHUNKS)*nearMul;
   const candidates=[];
 
   for(const c of chunkMap.values()){
