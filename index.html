@@ -845,7 +845,22 @@
       "No more phantom cliff walls!",
       "Biomes feel legit now!",
       "Seed and send it!",
-      "Mud got an upgrade!"
+      "Mud got an upgrade!",
+      "Chunk by chunk, smooth and steady!",
+      "Torchlight hits different at dusk!",
+      "Careful, cactus still hurts!",
+      "Pick a seed, own the skyline!",
+      "Rivers finally behave!",
+      "Classic vibes, modern chunks!",
+      "Generated with extra cozy hills!",
+      "Spawn safer, explore farther!",
+      "Clouds on, worries off!",
+      "Resource packs ready to roll!",
+      "Survival mode says hello!",
+      "Now with less menu chaos!",
+      "Keep calm and place blocks!",
+      "Mountains with better manners!",
+      "Baked fresh from one HTML file!"
     ];
 
     const PRESET_HINTS={
@@ -876,6 +891,11 @@
 
     const WORLD_STORAGE_KEY="blockiecraft_worlds";
     const LAST_WORLD_ID_KEY="blockiecraft_last_world_id";
+    const RESOURCE_PACK_STORAGE_KEY="blockiecraft_resource_pack";
+    const RESOURCE_PACK_OPTIONS=[
+      {id:"classic-lite",label:"Classic Lite"},
+      {id:"default",label:"Default (Procedural)"}
+    ];
     const GAME_VERSION=(document.querySelector(".footer-left")?.textContent||"BlockieCraft Alpha 0.7.0").trim();
 
     const worldSelectOverlay=document.getElementById("worldSelectOverlay");
@@ -915,6 +935,7 @@
     const splashText=document.getElementById("splashText");
     const helpBox=document.getElementById("helpBox");
     const toast=document.getElementById("toast");
+    const packBtn=document.getElementById("packBtn");
     const menuMusic=document.getElementById("menuMusic");
     const clickSfx=document.getElementById("clickSfx");
 
@@ -929,6 +950,7 @@
     let clickSfxUnlockArmed=false;
     let clickSfxUnlocked=false;
     let menuBackgroundSuspended=false;
+    let selectedResourcePackId="classic-lite";
 
     function showToast(text,ms=1600){
       toast.textContent=text;
@@ -1084,6 +1106,43 @@
       return merged;
     }
 
+    function normalizeResourcePackId(raw){
+      const id=String(raw??"").trim().toLowerCase();
+      if(id==="off"||id==="none")return "default";
+      return RESOURCE_PACK_OPTIONS.some(opt=>opt.id===id)?id:"classic-lite";
+    }
+
+    function resourcePackLabel(id){
+      return RESOURCE_PACK_OPTIONS.find(opt=>opt.id===id)?.label||"Classic Lite";
+    }
+
+    function loadSelectedResourcePackId(){
+      try{return normalizeResourcePackId(localStorage.getItem(RESOURCE_PACK_STORAGE_KEY)||"classic-lite");}
+      catch(e){return "classic-lite";}
+    }
+
+    function saveSelectedResourcePackId(id){
+      selectedResourcePackId=normalizeResourcePackId(id);
+      try{localStorage.setItem(RESOURCE_PACK_STORAGE_KEY,selectedResourcePackId);}catch(e){}
+      syncPackButtonState();
+      return selectedResourcePackId;
+    }
+
+    function syncPackButtonState(){
+      if(!packBtn)return;
+      const label=resourcePackLabel(selectedResourcePackId);
+      packBtn.title=`Resource Pack: ${label} (click to switch)`;
+      packBtn.setAttribute("aria-label",`Resource Pack: ${label}`);
+      packBtn.dataset.pack=selectedResourcePackId;
+    }
+
+    function cycleResourcePackSelection(){
+      const idx=RESOURCE_PACK_OPTIONS.findIndex(opt=>opt.id===selectedResourcePackId);
+      const next=RESOURCE_PACK_OPTIONS[(idx+1+RESOURCE_PACK_OPTIONS.length)%RESOURCE_PACK_OPTIONS.length];
+      saveSelectedResourcePackId(next.id);
+      showToast(`Resource pack set to ${next.label}.`,1700);
+    }
+
     function worldTimestampLabel(v){
       const d=new Date(v||Date.now());
       return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
@@ -1095,11 +1154,12 @@
       const seed=String(raw.seed||"").trim();
       const preset=PRESET_HINTS[raw.preset]?raw.preset:"balanced";
       const renderDist=Math.max(2,Math.min(8,Math.round(Number(raw.renderDist)||3)));
+      const resourcePack=normalizeResourcePackId(raw.resourcePack||"classic-lite");
       const createdAt=Number(raw.createdAt)||Date.now();
       const updatedAt=Number(raw.updatedAt)||createdAt;
       const lastPlayedAt=Number(raw.lastPlayedAt)||0;
       const id=String(raw.id||("world-"+hashSeed(worldName+seed+createdAt).toString(36)));
-      return {id,worldName,seed,preset,renderDist,createdAt,updatedAt,lastPlayedAt};
+      return {id,worldName,seed,preset,renderDist,resourcePack,createdAt,updatedAt,lastPlayedAt};
     }
 
     function getWorlds(){
@@ -1139,6 +1199,7 @@
           seed:cfg.seed||randomSeedString(),
           preset:cfg.preset||"balanced",
           renderDist:cfg.renderDist||3,
+          resourcePack:selectedResourcePackId,
           createdAt:now,
           updatedAt:now,
           lastPlayedAt:now
@@ -1154,6 +1215,8 @@
       seedInput.value=cfg.seed||"";
       presetSelect.value=PRESET_HINTS[cfg.preset]?cfg.preset:"balanced";
       renderDistInput.value=String(Math.max(2,Math.min(8,Math.round(Number(cfg.renderDist)||3))));
+      selectedResourcePackId=normalizeResourcePackId(cfg.resourcePack||selectedResourcePackId);
+      syncPackButtonState();
       updateSeedPreview();
       updatePresetHint();
     }
@@ -1163,7 +1226,8 @@
       const seed=(seedInput.value.trim()||randomSeedString()).slice(0,64);
       const preset=PRESET_HINTS[presetSelect.value]?presetSelect.value:"balanced";
       const renderDist=Math.max(2,Math.min(8,Math.round(Number(renderDistInput.value)||3)));
-      return {worldName,seed,preset,renderDist};
+      const resourcePack=normalizeResourcePackId(selectedResourcePackId);
+      return {worldName,seed,preset,renderDist,resourcePack};
     }
 
     function launchWorldFromConfig(cfg){
@@ -1173,6 +1237,7 @@
       q.set("seed",cfg.seed||randomSeedString());
       q.set("preset",cfg.preset||"balanced");
       q.set("renderDist",String(Math.max(2,Math.min(8,Math.round(Number(cfg.renderDist)||3)))));
+      q.set("pack",normalizeResourcePackId(cfg.resourcePack||selectedResourcePackId));
       location.href="game.html?"+q.toString();
     }
 
@@ -1197,6 +1262,8 @@
       const hasCurrent=selectedWorldId&&worlds.some(w=>w.id===selectedWorldId);
       if(!hasCurrent){
         const fallback=worlds.find(w=>w.id===preferred)||worlds[0];
+        selectedResourcePackId=normalizeResourcePackId(fallback.resourcePack||selectedResourcePackId);
+        syncPackButtonState();
         rememberSelectedWorld(fallback.id);
       }
 
@@ -1227,7 +1294,7 @@
 
         const extra=document.createElement("div");
         extra.className="world-submeta";
-        extra.textContent=`Survival Mode, Version: ${GAME_VERSION} | ${formatPresetName(world.preset)} | ${world.renderDist} chunks | Seed: ${world.seed||"random"}`;
+        extra.textContent=`Survival Mode, Version: ${GAME_VERSION} | ${formatPresetName(world.preset)} | ${world.renderDist} chunks | Pack: ${resourcePackLabel(world.resourcePack)} | Seed: ${world.seed||"random"}`;
 
         const info=document.createElement("div");
         info.className="world-info";
@@ -1238,6 +1305,8 @@
         item.appendChild(thumb);
         item.appendChild(info);
         item.addEventListener("click",()=>{
+          selectedResourcePackId=normalizeResourcePackId(world.resourcePack||selectedResourcePackId);
+          syncPackButtonState();
           rememberSelectedWorld(world.id);
           renderWorldList();
         });
@@ -1358,7 +1427,12 @@
         showToast("Select a world first.");
         return;
       }
-      worlds[idx]={...worlds[idx],lastPlayedAt:Date.now(),updatedAt:Date.now()};
+      worlds[idx]={
+        ...worlds[idx],
+        resourcePack:normalizeResourcePackId(selectedResourcePackId),
+        lastPlayedAt:Date.now(),
+        updatedAt:Date.now()
+      };
       saveWorlds(worlds);
       rememberSelectedWorld(worlds[idx].id);
       launchWorldFromConfig(worlds[idx]);
@@ -1401,7 +1475,8 @@
         worldName:`${selected.worldName} Copy`.slice(0,32),
         seed:selected.seed,
         preset:selected.preset,
-        renderDist:selected.renderDist
+        renderDist:selected.renderDist,
+        resourcePack:selected.resourcePack
       });
     }
 
@@ -1557,6 +1632,9 @@
       }
     }
 
+    selectedResourcePackId=loadSelectedResourcePackId();
+    syncPackButtonState();
+
     document.getElementById("singleplayerBtn").addEventListener("click",openWorldSelectPanel);
     document.getElementById("optionsBtn").addEventListener("click",openOptionsPanel);
 
@@ -1577,7 +1655,7 @@
     });
 
     document.getElementById("langBtn").addEventListener("click",()=>showToast("Language menu is not wired yet."));
-    document.getElementById("packBtn").addEventListener("click",()=>showToast("Resource packs are not wired yet."));
+    packBtn.addEventListener("click",cycleResourcePackSelection);
 
     playWorldBtn.addEventListener("click",playSelectedWorld);
     createWorldOpenBtn.addEventListener("click",()=>{
@@ -2838,7 +2916,7 @@
     let camPosCurve=null;
     let camLookCurve=null;
     let camPathPhase=0;
-    let camPathSpeed=0.00155;
+    let camPathSpeed=0.00078;
     let camPathOffset=0;
     let camInit=false;
     let lastBgT=0;
@@ -2906,7 +2984,7 @@
       camPosCurve=new THREE.CatmullRomCurve3(posPts,true,"centripetal",0.0);
       camLookCurve=new THREE.CatmullRomCurve3(lookPts,true,"centripetal",0.0);
       camPathOffset=h2(19,7,940);
-      camPathSpeed=0.0013+h2(31,11,941)*0.00022;
+      camPathSpeed=0.00078+h2(31,11,941)*0.00012;
       camPathPhase=camPathOffset;
       camInit=false;
       lastBgT=0;
@@ -2959,8 +3037,8 @@
       }
 
       camPosCurve.getPointAt(camPathPhase,camPathPos);
-      camPosCurve.getPointAt((camPathPhase+0.004)%1,camPathAhead);
-      camLookCurve.getPointAt((camPathPhase+0.012)%1,camPathLook);
+      camPosCurve.getPointAt((camPathPhase+0.0026)%1,camPathAhead);
+      camLookCurve.getPointAt((camPathPhase+0.0084)%1,camPathLook);
 
       const desiredX=THREE.MathUtils.clamp(camPathPos.x,bgWorldBounds.minX+8,bgWorldBounds.maxX-8);
       const desiredZ=THREE.MathUtils.clamp(camPathPos.z,bgWorldBounds.minZ+8,bgWorldBounds.maxZ-8);
@@ -2968,7 +3046,7 @@
       const desiredLookZ=THREE.MathUtils.clamp(THREE.MathUtils.lerp(camPathAhead.z,camPathLook.z,0.72),bgWorldBounds.minZ+6,bgWorldBounds.maxZ-6);
 
       const rayMaxT=terrainRayMaxHeight(desiredX,desiredZ,desiredLookX,desiredLookZ,28);
-      rayMaxSm=THREE.MathUtils.damp(rayMaxSm,rayMaxT,4.2,dt);
+      rayMaxSm=THREE.MathUtils.damp(rayMaxSm,rayMaxT,2.8,dt);
 
       const localMax=terrainPatchMaxHeight(desiredX,desiredZ,3.2);
       const lookLocal=terrainPatchMaxHeight(desiredLookX,desiredLookZ,2.8);
@@ -2988,7 +3066,7 @@
 
       const targetFov=59.2;
       if(Math.abs(camera.fov-targetFov)>0.01){
-        camera.fov=THREE.MathUtils.damp(camera.fov,targetFov,1.15,dt);
+        camera.fov=THREE.MathUtils.damp(camera.fov,targetFov,0.82,dt);
         camera.updateProjectionMatrix();
       }
 
@@ -3001,8 +3079,8 @@
         camInit=true;
       }
 
-      const posSmooth=2.3;
-      const lookSmooth=2.9;
+      const posSmooth=1.45;
+      const lookSmooth=1.95;
       camSmPos.x=THREE.MathUtils.damp(camSmPos.x,camTargetPos.x,posSmooth,dt);
       camSmPos.y=THREE.MathUtils.damp(camSmPos.y,camTargetPos.y,posSmooth,dt);
       camSmPos.z=THREE.MathUtils.damp(camSmPos.z,camTargetPos.z,posSmooth,dt);
