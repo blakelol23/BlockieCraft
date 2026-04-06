@@ -1725,6 +1725,10 @@ const CHUNK_OCCLUSION_UPDATE_MS=96;
 const CHUNK_OCCLUSION_VISIBILITY_BIAS=0.11;
 const CHUNK_OCCLUSION_HORIZON_GROWTH=0.008;
 const CHUNK_OCCLUSION_NEAR_DIST_CHUNKS=3.3;
+const CHUNK_LOD_NEAR_DIST_CHUNKS=2.8;
+const CHUNK_LOD_FAR_DIST_CHUNKS=4.6;
+const ENABLE_CHUNK_OCCLUSION=BOOT_QUERY.get("chunkOcclusion")==="1";
+const ENABLE_CHUNK_LOD=BOOT_QUERY.get("chunkLod")==="1";
 const _chunkOcclusionBins=new Float32Array(CHUNK_OCCLUSION_BINS);
 let _chunkOcclusionLastUpdate=-Infinity;
 const _chunkOcclusionVisible=new Map();
@@ -1773,6 +1777,7 @@ const perfTuning={
   lastDownscaleAt:0
 };
 const ENABLE_DYNAMIC_RESOLUTION=BOOT_QUERY.get("dynamicRes")==="1";
+const ENABLE_CHUNK_START_LIMITER=BOOT_QUERY.get("chunkRateLimit")==="1";
 
 function chunkQueuePressure(){
   return genQueue.length+dirtyQ.length+(activeChunkJob?1:0);
@@ -1893,6 +1898,74 @@ const keys=new Set();
 let nextChunkWorkAt=0;
 const worldRoot=new THREE.Group();
 scene.add(worldRoot);
+
+const CHUNK_DATA_LEN=S.chunkSize*S.worldH*S.chunkSize;
+const CHUNK_POOL_MAX=96;
+const chunkDataPool=[];
+const chunkFacePool=[];
+const chunkVisPool=[];
+
+function acquireChunkData(){
+  const data=chunkDataPool.pop();
+  return data&&data.length===CHUNK_DATA_LEN?data:new Uint8Array(CHUNK_DATA_LEN);
+}
+function releaseChunkData(data){
+  if(!(data instanceof Uint8Array)||data.length!==CHUNK_DATA_LEN)return;
+  if(chunkDataPool.length<CHUNK_POOL_MAX)chunkDataPool.push(data);
+}
+function acquireChunkFaceArray(){
+  const arr=chunkFacePool.pop();
+  if(arr){arr.length=0;return arr;}
+  return [];
+}
+function releaseChunkFaceArray(arr){
+  if(!Array.isArray(arr))return;
+  arr.length=0;
+  if(chunkFacePool.length<CHUNK_POOL_MAX*3)chunkFacePool.push(arr);
+}
+function acquireChunkVisMap(){
+  const m=chunkVisPool.pop();
+  if(m){m.clear();return m;}
+  return new Map();
+}
+function releaseChunkVisMap(m){
+  if(!(m instanceof Map))return;
+  m.clear();
+  if(chunkVisPool.length<CHUNK_POOL_MAX)chunkVisPool.push(m);
+}
+function releaseChunkJobScratch(job,recycleData=false){
+  if(!job)return;
+  releaseChunkFaceArray(job.oFaces);
+  releaseChunkFaceArray(job.aFaces);
+  releaseChunkFaceArray(job.wFaces);
+  releaseChunkVisMap(job.vis);
+  job.oFaces=null;job.aFaces=null;job.wFaces=null;job.vis=null;
+  if(recycleData&&job.data){releaseChunkData(job.data);job.data=null;}
+}
+
+let chunkBuildTokenLastAt=performance.now();
+let chunkBuildTokens=6;
+function chunkBuildRatePerSecond(){
+  return THREE.MathUtils.clamp(8+S.renderDist*2.2,10,24);
+}
+function chunkBuildTokenBurst(){
+  return THREE.MathUtils.clamp(3+Math.round(S.renderDist*0.6),4,9);
+}
+function refillChunkBuildTokens(){
+  const now=performance.now();
+  const dt=Math.max(0,(now-chunkBuildTokenLastAt)/1000);
+  chunkBuildTokenLastAt=now;
+  if(dt<=0)return;
+  chunkBuildTokens=Math.min(chunkBuildTokenBurst(),chunkBuildTokens+dt*chunkBuildRatePerSecond());
+}
+function canStartChunkBuild(isDirty=false){
+  if(!ENABLE_CHUNK_START_LIMITER)return true;
+  refillChunkBuildTokens();
+  const cost=isDirty?0.75:1;
+  if(chunkBuildTokens<cost)return false;
+  chunkBuildTokens-=cost;
+  return true;
+}
 
 function effectiveStreamRadius(){
   const rd=THREE.MathUtils.clamp(Math.round(S.renderDist)||3,2,8);
@@ -4086,6 +4159,8 @@ function spawnWorld(){
   perfTuning.highSamples=0;
   perfTuning.lastAdjustAt=now;
   perfTuning.settleUntil=now+5200;
+  chunkBuildTokenLastAt=now;
+  chunkBuildTokens=chunkBuildTokenBurst();
   seedChunks();updateCamera(0.016);
   lagDebug.lastPlayerPos.copy(player.pos);
   lagDebug.lastCameraPos.copy(camera.position);
@@ -4094,6 +4169,22 @@ function spawnWorld(){
 
 function isSpawnGroundBlock(t){
   return isSolid(t)&&t!==BLOCK.LEAVES&&t!==BLOCK.CACTUS&&t!==BLOCK.GLASS&&t!==BLOCK.WATER&&t!==BLOCK.TORCH;
+}
+
+const SPAWN_PREFERRED_SURFACES=new Set([
+  BLOCK.GRASS,
+  BLOCK.DIRT,
+  BLOCK.SAND,
+  BLOCK.RED_SAND,
+  BLOCK.GRAVEL,
+  BLOCK.CLAY,
+  BLOCK.MUD,
+  BLOCK.SNOW,
+  BLOCK.STONE
+]);
+
+function isPreferredSpawnSurfaceBlock(t){
+  return SPAWN_PREFERRED_SURFACES.has(t);
 }
 
 function isSpawnAirBlock(t){
@@ -4123,28 +4214,57 @@ function spawnRoughnessPenalty(x,z,groundY){
   return rough*0.65;
 }
 
-function isSpawnCandidateSafe(x,groundY,z){
+function hasPreferredSpawnSupport(x,groundY,z){
+  let preferredCount=0;
+  for(let nx=x-1;nx<=x+1;nx++)for(let nz=z-1;nz<=z+1;nz++){
+    const floor=getBlock(nx,groundY,nz);
+    const feet=getBlock(nx,groundY+1,nz);
+    if(feet===BLOCK.WATER)return false;
+    if(isPreferredSpawnSurfaceBlock(floor))preferredCount++;
+  }
+  return preferredCount>=5;
+}
+
+function isSpawnCandidateSafe(x,groundY,z,requirePreferred=true){
   if(groundY<1||groundY>=S.worldH-3)return false;
   if(groundY<S.waterLevel+1)return false;
-  if(!isSpawnGroundBlock(getBlock(x,groundY,z)))return false;
+  const ground=getBlock(x,groundY,z);
+  if(!isSpawnGroundBlock(ground))return false;
+  if(requirePreferred&&!isPreferredSpawnSurfaceBlock(ground))return false;
   const feet=getBlock(x,groundY+1,z);
   const head=getBlock(x,groundY+2,z);
   if(!isSpawnAirBlock(feet)||!isSpawnAirBlock(head))return false;
   if(hasSpawnHazardNearby(x,groundY,z))return false;
+  if(requirePreferred&&!hasPreferredSpawnSupport(x,groundY,z))return false;
   return true;
 }
 
 function findSpawnFallback(ox,oz,maxRing=120){
+  let bestPreferred=null;
+  let bestDry=null;
   for(let r=0;r<=maxRing;r++){
-    for(let x=ox-r;x<=ox+r;x++)for(let z=oz-r;z<=oz+r;z++){
+    const step=r>120?2:1;
+    for(let x=ox-r;x<=ox+r;x+=step)for(let z=oz-r;z<=oz+r;z+=step){
       if(r>0&&Math.abs(x-ox)!==r&&Math.abs(z-oz)!==r)continue;
       const col=getCol(x,z);
       if(col.height<S.waterLevel+1)continue;
       const groundY=Math.min(S.worldH-3,Math.max(2,col.height));
-      if(!isSpawnCandidateSafe(x,groundY,z))continue;
+      const dist=Math.hypot(x-ox,z-oz);
+      const ground=getBlock(x,groundY,z);
+      if(!bestDry||groundY>bestDry.groundY||(groundY===bestDry.groundY&&dist<bestDry.dist)){
+        bestDry={x,z,groundY,dist};
+      }
+      if(isPreferredSpawnSurfaceBlock(ground)){
+        if(!bestPreferred||groundY>bestPreferred.groundY||(groundY===bestPreferred.groundY&&dist<bestPreferred.dist)){
+          bestPreferred={x,z,groundY,dist};
+        }
+      }
+      if(!isSpawnCandidateSafe(x,groundY,z,true))continue;
       return new THREE.Vector3(x+.5,groundY+1.05,z+.5);
     }
   }
+  if(bestPreferred)return new THREE.Vector3(bestPreferred.x+.5,bestPreferred.groundY+1.05,bestPreferred.z+.5);
+  if(bestDry)return new THREE.Vector3(bestDry.x+.5,bestDry.groundY+1.05,bestDry.z+.5);
   return null;
 }
 
@@ -4162,14 +4282,14 @@ function findSpawn(ox,oz){
 
       for(let y=topY;y>=minScanY;y--){
         const t=getBlock(x,y,z);
-        if(isSpawnGroundBlock(t)){
+        if(isSpawnGroundBlock(t)&&isPreferredSpawnSurfaceBlock(t)){
           groundY=y;
           break;
         }
       }
       if(groundY<1)continue;
       if(groundY<col.height-2)continue; // avoid cave floors below local surface
-      if(!isSpawnCandidateSafe(x,groundY,z))continue;
+      if(!isSpawnCandidateSafe(x,groundY,z,true))continue;
 
       const dist=Math.hypot(x-ox,z-oz);
       const heightPenalty=Math.abs((groundY+1)-(S.waterLevel+6))*0.08;
@@ -4183,7 +4303,7 @@ function findSpawn(ox,oz){
   }
 
   if(!best){
-    const fallback=findSpawnFallback(ox,oz,S.worldPreset==="classic"?168:120);
+    const fallback=findSpawnFallback(ox,oz,S.worldPreset==="classic"?280:200);
     if(fallback)return fallback;
     const fb=getCol(ox,oz);
     const fy=Math.max(S.waterLevel+2,Math.min(S.worldH-3,fb.height+2));
@@ -4414,7 +4534,7 @@ function applyRuntimeWorldState(state){
 
   if(Number.isFinite(p.selIdx))player.selIdx=THREE.MathUtils.clamp(Math.round(p.selIdx),0,8);
   const sx=Math.floor(player.pos.x),sy=Math.floor(player.pos.y)-1,sz=Math.floor(player.pos.z);
-  if(!isSpawnCandidateSafe(sx,sy,sz)){
+  if(!isSpawnCandidateSafe(sx,sy,sz,false)){
     const safe=findSpawn(sx,sz);
     player.pos.copy(safe);
     player.vel.set(0,0,0);
@@ -8227,6 +8347,7 @@ function seedChunks(){
       activeChunkJob=createChunkJob(ox,oz,"seed-priority");
       if(advanceChunkJob(activeChunkJob,Math.max(0.6,getChunkBudgetMs(true))))activeChunkJob=null;
     }else if(genQueue.length){
+      if(!canStartChunkBuild(false))return;
       const px=player.pos.x/S.chunkSize,pz=player.pos.z/S.chunkSize;
       let bestI=0,bestD=Infinity;
       for(let i=0;i<genQueue.length;i++){
@@ -8283,13 +8404,9 @@ function queueChunk(cx,cz,force=false){
 }
 function processGenQueue(){
   const pox=Math.floor(player.pos.x/S.chunkSize),poz=Math.floor(player.pos.z/S.chunkSize);
-  const activeRange=effectiveStreamRadius()+(chunkQueuePressure()>desiredGenQueueCap()*0.7?0:1);
 
   if(activeChunkJob){
-    // Abort in-progress job if its chunk went out of range
-    if(!chunkInRange(activeChunkJob.cx,activeChunkJob.cz,pox,poz,activeRange)){
-      activeChunkJob=null;return;
-    }
+    // Continue current job to avoid churn/GC spikes from cancel-and-restart loops.
     const budgetMs=getChunkBudgetMs(true);
     if(advanceChunkJob(activeChunkJob,budgetMs))activeChunkJob=null;
     return;
@@ -8302,6 +8419,7 @@ function processGenQueue(){
   trimDirtyQueueToCap(pox,poz);
 
   if(!genQueue.length||lagDebug.lastFrameMs>20||!reserveChunkWork())return;
+  if(!canStartChunkBuild(false))return;
   const px=player.pos.x/S.chunkSize,pz=player.pos.z/S.chunkSize;
   const cox=Math.floor(px),coz=Math.floor(pz);
   const keepRange=effectiveStreamRadius()+(chunkQueuePressure()>desiredGenQueueCap()*0.7?0:1);
@@ -8335,15 +8453,21 @@ function createChunkJob(cx,cz,reason){
     topY:Math.max(2,S.waterLevel+2),
     decorateStage:0,
     stage:"terrain",column:0,columnTotal:S.chunkSize*S.chunkSize,
-    data:new Uint8Array(S.chunkSize*S.worldH*S.chunkSize),
-    oFaces:[],aFaces:[],wFaces:[],vis:new Map(),meshTypes:[],meshIndex:0,
+    data:acquireChunkData(),
+    oFaces:acquireChunkFaceArray(),aFaces:acquireChunkFaceArray(),wFaces:acquireChunkFaceArray(),vis:acquireChunkVisMap(),meshTypes:[],meshIndex:0,
     mergeStage:0,pendingMesh:null,pendingMeshCursor:0,
     grp:null,meshes:[]
   };
 }
 function finishChunkJob(job){
-  if(job.ex){disposeChunkMeshes(job.ex.meshes);worldRoot.remove(job.ex.grp);}
+  if(job.ex){
+    disposeChunkMeshes(job.ex.meshes);
+    worldRoot.remove(job.ex.grp);
+    if(job.ex.data)releaseChunkData(job.ex.data);
+  }
   worldRoot.add(job.grp);chunkMap.set(job.k,{k:job.k,cx:job.cx,cz:job.cz,grp:job.grp,meshes:job.meshes,data:job.data,st:job.st,topY:job.topY});
+  job.data=null;
+  releaseChunkJobScratch(job,false);
   seedChunkWater(job.cx,job.cz);
   if(job.cpuMs>=lagDebug.chunkWarnMs){
     logLagDebug("chunk-build",{
@@ -8510,11 +8634,26 @@ function buildChunkImmediate(cx,cz,reason="immediate"){
 function disposeChunkMeshes(meshes){
   for(let i=0;i<meshes.length;i++){
     const m=meshes[i];
-    if(m.geometry)m.geometry.dispose();
-    if(m.isInstancedMesh&&m.dispose)m.dispose();
+    if(m.isInstancedMesh){
+      if(m.dispose)m.dispose();
+      continue;
+    }
+    if(!m.geometry)continue;
+    // Instanced chunk meshes reuse global geometries (cubeGeo/waterGeo/cactusGeo/torchGeo).
+    // Only dispose unique merged chunk geometries.
+    if(m.geometry!==cubeGeo&&m.geometry!==waterGeo&&m.geometry!==cactusGeo&&m.geometry!==torchGeo){
+      m.geometry.dispose();
+    }
   }
 }
-function unloadChunk(k){const c=chunkMap.get(k);if(!c)return;disposeChunkMeshes(c.meshes);worldRoot.remove(c.grp);chunkMap.delete(k);}
+function unloadChunk(k){
+  const c=chunkMap.get(k);
+  if(!c)return;
+  disposeChunkMeshes(c.meshes);
+  worldRoot.remove(c.grp);
+  if(c.data)releaseChunkData(c.data);
+  chunkMap.delete(k);
+}
 function rmHitMeshes(){/* no longer needed — meshes stored per-chunk */}
 // ═══════════════════════════════
 //  VILLAGE GENERATION
@@ -8745,6 +8884,7 @@ function rebuildNear(x,z){
 function flushDirty(){
   compactDirtyQueueToLoaded();
   if(activeChunkJob||!dirtyQ.length||genQueue.length||lagDebug.lastFrameMs>16||!reserveChunkWork())return;
+  if(!canStartChunkBuild(true))return;
   const k=dirtyQ[0];dirtyQ[0]=dirtyQ[dirtyQ.length-1];dirtyQ.length--;dirtySet.delete(k);
   if(!chunkMap.has(k))return;
   const c=chunkMap.get(k);
@@ -8783,6 +8923,7 @@ function _chunkAzimuth01(dx,dz){
 }
 
 function _chunkOcclusionEnabled(){
+  if(!ENABLE_CHUNK_OCCLUSION)return false;
   if(performance.now()<lagDebug.startupUntil+1400)return false;
   if(chunkQueuePressure()>Math.floor(desiredGenQueueCap()*0.45))return false;
   if(Math.hypot(player.vel.x,player.vel.z)>S.walkSpeed*1.2)return false;
@@ -8875,6 +9016,34 @@ function isChunkVisible(c){
   return _chunkOcclusionVisible.get(c.k)!==false;
 }
 
+function chunkLodTierForDistance(dist){
+  const near=S.chunkSize*CHUNK_LOD_NEAR_DIST_CHUNKS;
+  const far=S.chunkSize*CHUNK_LOD_FAR_DIST_CHUNKS;
+  if(dist<=near)return 0;
+  if(dist<=far)return 1;
+  return 2;
+}
+
+function applyChunkLod(c,tier){
+  if(c.lodTier===tier)return;
+  c.lodTier=tier;
+  for(let i=0;i<c.meshes.length;i++){
+    const m=c.meshes[i];
+    let visible=true;
+    if(m.material===atlasAlphaMat){
+      visible=tier===0;
+    }else if(m.material===waterMergeMat){
+      visible=tier<=1;
+    }else if(m.isInstancedMesh){
+      const bt=m.userData?.bt;
+      if(bt===BLOCK.TORCH)visible=tier===0;
+      else if(bt===BLOCK.WATER)visible=tier<=1;
+      else if(bt===BLOCK.LEAVES||bt===BLOCK.GLASS)visible=tier===0;
+    }
+    m.visible=visible;
+  }
+}
+
 function animateChunks(){
   _frustumMat.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
   _frustum.setFromProjectionMatrix(_frustumMat);
@@ -8888,6 +9057,14 @@ function animateChunks(){
       if(t>=1)c.animDone=true;
     }
     c.grp.visible=isChunkVisible(c);
+    if(c.grp.visible&&ENABLE_CHUNK_LOD){
+      const cx=c.cx*S.chunkSize+S.chunkSize*0.5;
+      const cz=c.cz*S.chunkSize+S.chunkSize*0.5;
+      const dist=Math.hypot(cx-camera.position.x,cz-camera.position.z);
+      applyChunkLod(c,chunkLodTierForDistance(dist));
+    }else if(c.grp.visible&&c.lodTier!==0){
+      applyChunkLod(c,0);
+    }
   }
 }
 
