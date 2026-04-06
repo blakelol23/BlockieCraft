@@ -136,9 +136,12 @@
       color:var(--gold);
       font-size:clamp(11px, 1.55vw, 18px);
       text-shadow:2px 2px 0 #3f3704;
-      transform-origin:center;
+      transform-origin:85% 60%;
       white-space:nowrap;
-      animation:splashWave 2.2s ease-in-out infinite;
+      transform:translate3d(0,0,0) rotate(-15deg) scale(1);
+      will-change:transform;
+      backface-visibility:hidden;
+      animation:splashWave 2.35s cubic-bezier(0.33,0,0.18,1) infinite;
     }
 
     .menu-column{
@@ -644,11 +647,13 @@
     }
 
     @keyframes splashWave{
-      0%{transform:rotate(-16deg) translateY(0px) scale(1)}
-      25%{transform:rotate(-15deg) translateY(-4px) scale(1.03)}
-      50%{transform:rotate(-14deg) translateY(-6px) scale(1.07)}
-      75%{transform:rotate(-15deg) translateY(-4px) scale(1.03)}
-      100%{transform:rotate(-16deg) translateY(0px) scale(1)}
+      0%{transform:translate3d(0,0,0) rotate(-15deg) scale(1)}
+      14%{transform:translate3d(0,-1px,0) rotate(-15deg) scale(1.015)}
+      34%{transform:translate3d(0,-4px,0) rotate(-15deg) scale(1.05)}
+      50%{transform:translate3d(0,-6px,0) rotate(-15deg) scale(1.075)}
+      66%{transform:translate3d(0,-4px,0) rotate(-15deg) scale(1.05)}
+      86%{transform:translate3d(0,-1px,0) rotate(-15deg) scale(1.015)}
+      100%{transform:translate3d(0,0,0) rotate(-15deg) scale(1)}
     }
 
     @keyframes panelIn{
@@ -863,6 +868,13 @@
       "Baked fresh from one HTML file!"
     ];
 
+    const SPLASH_LINE_RARE=[
+      "Sam's gay",
+      "Shove a fork in a outlet! Trust me, it's fine.",
+      "Stop looking at me please",
+      "I know you want to see the source code, but trust me, it's for the best if you don't.",
+    ];
+
     const PRESET_HINTS={
       classic:"Gentle terrain and fewer dramatic peaks.",
       balanced:"Default profile with stable rivers and clean coasts.",
@@ -978,7 +990,9 @@
     }
 
     function setRandomSplash(){
-      splashText.textContent=SPLASH_LINES[Math.floor(Math.random()*SPLASH_LINES.length)];
+      const useRare=Math.random()<0.05&&SPLASH_LINE_RARE.length>0;
+      const pool=useRare?SPLASH_LINE_RARE:SPLASH_LINES;
+      splashText.textContent=pool[Math.floor(Math.random()*pool.length)]||"";
     }
 
     function randomSeedString(){
@@ -1762,6 +1776,9 @@
     renderer.outputColorSpace=THREE.SRGBColorSpace;
     renderer.toneMapping=THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure=1.05;
+
+    // test
+    renderer.setClearColor(0x90a8cf,1);
 
     const scene=new THREE.Scene();
     scene.background=new THREE.Color(0x90a8cf);

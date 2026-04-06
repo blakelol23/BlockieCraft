@@ -1671,6 +1671,7 @@ renderer.shadowMap.type=THREE.PCFShadowMap;
 renderer.shadowMap.autoUpdate=false;
 renderer.autoClear=false;
 document.body.appendChild(renderer.domElement);
+window.renderer=renderer; // for dev console access
 
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x84c9ff);
