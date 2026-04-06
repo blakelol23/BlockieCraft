@@ -1394,6 +1394,12 @@ const GS=(()=>{
   try{return Object.assign({},defaults,JSON.parse(localStorage.getItem('blockiecraft_settings')||'{}'));}
   catch(e){return {...defaults};}
 })();
+GS.renderDist=THREE.MathUtils.clamp(Math.round(Number(GS.renderDist)||3),2,8);
+GS.fov=THREE.MathUtils.clamp(Math.round(Number(GS.fov)||75),60,110);
+GS.brightness=THREE.MathUtils.clamp(Math.round(Number(GS.brightness)||50),0,100);
+GS.masterVolume=THREE.MathUtils.clamp(Math.round(Number(GS.masterVolume)||50),0,100);
+GS.musicVolume=THREE.MathUtils.clamp(Math.round(Number(GS.musicVolume)||100),0,100);
+GS.mouseSens=THREE.MathUtils.clamp(Math.round(Number(GS.mouseSens)||50),0,100);
 
 const WORLD_PRESETS={
   classic:{
@@ -1677,6 +1683,10 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x84c9ff);
 scene.fog=new THREE.Fog(0x84c9ff,18,130);
 
+// test
+window.scene = scene;
+window.camera = camera;
+
 // HUD scene for FP arm (rendered with cleared depth each frame)
 const hudScene=new THREE.Scene();
 const hudCam=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.02,10);
@@ -1714,9 +1724,9 @@ const _frustum=new THREE.Frustum();
 const _chunkBox=new THREE.Box3();
 const CHUNK_OCCLUSION_BINS=180;
 const CHUNK_OCCLUSION_UPDATE_MS=96;
-const CHUNK_OCCLUSION_VISIBILITY_BIAS=0.05;
-const CHUNK_OCCLUSION_HORIZON_GROWTH=0.012;
-const CHUNK_OCCLUSION_NEAR_DIST_CHUNKS=2.2;
+const CHUNK_OCCLUSION_VISIBILITY_BIAS=0.11;
+const CHUNK_OCCLUSION_HORIZON_GROWTH=0.008;
+const CHUNK_OCCLUSION_NEAR_DIST_CHUNKS=3.3;
 const _chunkOcclusionBins=new Float32Array(CHUNK_OCCLUSION_BINS);
 let _chunkOcclusionLastUpdate=-Infinity;
 const _chunkOcclusionVisible=new Map();
@@ -1760,10 +1770,11 @@ const perfTuning={
   lastAdjustAt:0,
   lowSamples:0,
   highSamples:0,
-  minAdjustGapMs:2600,
+  minAdjustGapMs:12000,
   settleUntil:performance.now()+4500,
   lastDownscaleAt:0
 };
+const ENABLE_DYNAMIC_RESOLUTION=BOOT_QUERY.get("dynamicRes")==="1";
 
 function chunkQueuePressure(){
   return genQueue.length+dirtyQ.length+(activeChunkJob?1:0);
@@ -1873,6 +1884,8 @@ const CHUNK_QUEUE_MIN_CAP=42;
 const CHUNK_QUEUE_MAX_CAP=120;
 const CHUNK_STREAM_TOPUP_MIN=12;
 const CHUNK_STREAM_TOPUP_MAX=54;
+const CHUNK_DIRTY_MIN_CAP=36;
+const CHUNK_DIRTY_MAX_CAP=96;
 const overrides=new Map();
 const _nearHM=[];
 const particles=[];
@@ -1888,8 +1901,9 @@ function effectiveStreamRadius(){
   const pressure=chunkQueuePressure();
   const frameMs=lagDebug.lastFrameMs||16;
   let eff=rd;
-  if(pressure>130||frameMs>30)eff=rd-2;
-  else if(pressure>90||frameMs>24)eff=rd-1;
+  if(performance.now()<lagDebug.startupUntil+2600)eff=Math.min(eff,Math.min(5,rd));
+  if(pressure>140||frameMs>32)eff=Math.min(eff,rd-1);
+  else if((pressure>95||frameMs>26)&&rd>3)eff=Math.min(eff,rd-1);
   return THREE.MathUtils.clamp(eff,2,rd);
 }
 
@@ -1901,6 +1915,44 @@ function desiredGenQueueCap(){
 
 function desiredStreamTopupCap(){
   return THREE.MathUtils.clamp(Math.floor(desiredGenQueueCap()*0.45),CHUNK_STREAM_TOPUP_MIN,CHUNK_STREAM_TOPUP_MAX);
+}
+
+function desiredDirtyQueueCap(){
+  const effRd=effectiveStreamRadius();
+  const base=20+effRd*10;
+  return THREE.MathUtils.clamp(base,CHUNK_DIRTY_MIN_CAP,CHUNK_DIRTY_MAX_CAP);
+}
+
+function compactDirtyQueueToLoaded(){
+  let w=0;
+  for(let i=0;i<dirtyQ.length;i++){
+    const k=dirtyQ[i];
+    if(chunkMap.has(k))dirtyQ[w++]=k;
+    else dirtySet.delete(k);
+  }
+  dirtyQ.length=w;
+}
+
+function trimDirtyQueueToCap(ox,oz,cap=desiredDirtyQueueCap()){
+  if(dirtyQ.length<=cap)return;
+  dirtyQ.sort((ka,kb)=>{
+    const ca=chunkMap.get(ka),cb=chunkMap.get(kb);
+    const da=ca?Math.hypot(ca.cx-ox,ca.cz-oz):Infinity;
+    const db=cb?Math.hypot(cb.cx-ox,cb.cz-oz):Infinity;
+    return da-db;
+  });
+  for(let i=cap;i<dirtyQ.length;i++)dirtySet.delete(dirtyQ[i]);
+  dirtyQ.length=cap;
+}
+
+function queueDirtyChunk(k){
+  if(dirtySet.has(k))return;
+  dirtySet.add(k);
+  dirtyQ.push(k);
+  if(dirtyQ.length>desiredDirtyQueueCap()){
+    const ox=Math.floor(player.pos.x/S.chunkSize),oz=Math.floor(player.pos.z/S.chunkSize);
+    trimDirtyQueueToCap(ox,oz);
+  }
 }
 
 function compactGenQueueToRange(ox,oz,r){
@@ -4022,6 +4074,7 @@ function selectSlot(idx){
 function spawnWorld(){
   const sp=findSpawn(0,0);
   player.pos.copy(sp);player.vel.set(0,0,0);player.onGround=true;
+  player.safePos.copy(player.pos);
   if(pendingWorldRuntimeState){
     applyRuntimeWorldState(pendingWorldRuntimeState);
     pendingWorldRuntimeState=null;
@@ -4072,9 +4125,34 @@ function spawnRoughnessPenalty(x,z,groundY){
   return rough*0.65;
 }
 
+function isSpawnCandidateSafe(x,groundY,z){
+  if(groundY<1||groundY>=S.worldH-3)return false;
+  if(groundY<S.waterLevel+1)return false;
+  if(!isSpawnGroundBlock(getBlock(x,groundY,z)))return false;
+  const feet=getBlock(x,groundY+1,z);
+  const head=getBlock(x,groundY+2,z);
+  if(!isSpawnAirBlock(feet)||!isSpawnAirBlock(head))return false;
+  if(hasSpawnHazardNearby(x,groundY,z))return false;
+  return true;
+}
+
+function findSpawnFallback(ox,oz,maxRing=120){
+  for(let r=0;r<=maxRing;r++){
+    for(let x=ox-r;x<=ox+r;x++)for(let z=oz-r;z<=oz+r;z++){
+      if(r>0&&Math.abs(x-ox)!==r&&Math.abs(z-oz)!==r)continue;
+      const col=getCol(x,z);
+      if(col.height<S.waterLevel+1)continue;
+      const groundY=Math.min(S.worldH-3,Math.max(2,col.height));
+      if(!isSpawnCandidateSafe(x,groundY,z))continue;
+      return new THREE.Vector3(x+.5,groundY+1.05,z+.5);
+    }
+  }
+  return null;
+}
+
 function findSpawn(ox,oz){
   let best=null;
-  const maxRing=28;
+  const maxRing=S.worldPreset==="classic"?64:40;
   for(let r=0;r<=maxRing;r++){
     for(let x=ox-r;x<=ox+r;x++)for(let z=oz-r;z<=oz+r;z++){
       if(r>0&&Math.abs(x-ox)!==r&&Math.abs(z-oz)!==r)continue;
@@ -4093,25 +4171,24 @@ function findSpawn(ox,oz){
       }
       if(groundY<1)continue;
       if(groundY<col.height-2)continue; // avoid cave floors below local surface
-
-      const feet=getBlock(x,groundY+1,z);
-      const head=getBlock(x,groundY+2,z);
-      if(!isSpawnAirBlock(feet)||!isSpawnAirBlock(head))continue;
-      if(hasSpawnHazardNearby(x,groundY,z))continue;
+      if(!isSpawnCandidateSafe(x,groundY,z))continue;
 
       const dist=Math.hypot(x-ox,z-oz);
       const heightPenalty=Math.abs((groundY+1)-(S.waterLevel+6))*0.08;
       const roughPenalty=spawnRoughnessPenalty(x,z,groundY);
-      const score=dist+heightPenalty+roughPenalty;
+      const waterEdgePenalty=groundY<=S.waterLevel+2?3.8:0;
+      const score=dist+heightPenalty+roughPenalty+waterEdgePenalty;
 
       if(!best||score<best.score)best={x,z,y:groundY+1.05,score};
     }
-    if(best&&r>=3)break;
+    if(best&&r>=5)break;
   }
 
   if(!best){
+    const fallback=findSpawnFallback(ox,oz,S.worldPreset==="classic"?168:120);
+    if(fallback)return fallback;
     const fb=getCol(ox,oz);
-    const fy=Math.max(2,Math.min(S.worldH-3,fb.height+1));
+    const fy=Math.max(S.waterLevel+2,Math.min(S.worldH-3,fb.height+2));
     return new THREE.Vector3(ox+.5,fy+0.05,oz+.5);
   }
   return new THREE.Vector3(best.x+.5,best.y,best.z+.5);
@@ -4338,6 +4415,13 @@ function applyRuntimeWorldState(state){
   tryRestorePendingMobs();
 
   if(Number.isFinite(p.selIdx))player.selIdx=THREE.MathUtils.clamp(Math.round(p.selIdx),0,8);
+  const sx=Math.floor(player.pos.x),sy=Math.floor(player.pos.y)-1,sz=Math.floor(player.pos.z);
+  if(!isSpawnCandidateSafe(sx,sy,sz)){
+    const safe=findSpawn(sx,sz);
+    player.pos.copy(safe);
+    player.vel.set(0,0,0);
+  }
+  player.safePos.copy(player.pos);
   buildHotbarUI();
   buildInventoryUI();
   selectSlot(player.selIdx);
@@ -7756,45 +7840,25 @@ function onVisChange(){
 }
 
 function adjustPerformanceBudget(frameMs){
+  if(!ENABLE_DYNAMIC_RESOLUTION)return;
   const now=performance.now();
   if(now<perfTuning.settleUntil)return;
   if(now-perfTuning.lastAdjustAt<perfTuning.minAdjustGapMs)return;
   const fpsSample=fpsValue||60;
   const pressure=chunkQueuePressure();
-  const moveSpeed=Math.hypot(player.vel.x,player.vel.z);
-  const allowUpscale=
-    pressure===0&&
-    moveSpeed<0.2&&
-    now>(lagDebug.startupUntil+3800)&&
-    (now-perfTuning.lastDownscaleAt)>12000;
-
-  if(frameMs>21||fpsSample<52||pressure>8){
+  if(frameMs>24||fpsSample<48||pressure>14){
     perfTuning.lowSamples++;
-    perfTuning.highSamples=0;
-  }else if(frameMs<10.5&&fpsSample>86&&allowUpscale){
-    perfTuning.highSamples++;
-    perfTuning.lowSamples=0;
   }else{
     perfTuning.lowSamples=Math.max(0,perfTuning.lowSamples-1);
-    perfTuning.highSamples=Math.max(0,perfTuning.highSamples-1);
   }
-  if(perfTuning.lowSamples>=3&&perfTuning.pixelRatio>perfTuning.minPixelRatio){
-    perfTuning.pixelRatio=Math.max(perfTuning.minPixelRatio,perfTuning.pixelRatio-0.06);
+  if(perfTuning.lowSamples>=4&&perfTuning.pixelRatio>perfTuning.minPixelRatio){
+    perfTuning.pixelRatio=Math.max(perfTuning.minPixelRatio,perfTuning.pixelRatio-0.05);
     renderer.setPixelRatio(perfTuning.pixelRatio);
     renderer.setSize(innerWidth,innerHeight,false);
     perfTuning.lastAdjustAt=now;
     perfTuning.lastDownscaleAt=now;
     perfTuning.lowSamples=0;
-    perfTuning.highSamples=0;
     logLagDebug("perf-adjust",{pixelRatio:+perfTuning.pixelRatio.toFixed(2),reason:"downscale"},false);
-  }else if(perfTuning.highSamples>=12&&perfTuning.pixelRatio<perfTuning.maxPixelRatio&&allowUpscale){
-    perfTuning.pixelRatio=Math.min(perfTuning.maxPixelRatio,perfTuning.pixelRatio+0.03);
-    renderer.setPixelRatio(perfTuning.pixelRatio);
-    renderer.setSize(innerWidth,innerHeight,false);
-    perfTuning.lastAdjustAt=now;
-    perfTuning.highSamples=0;
-    perfTuning.lowSamples=0;
-    logLagDebug("perf-adjust",{pixelRatio:+perfTuning.pixelRatio.toFixed(2),reason:"upscale"},false);
   }
 }
 
@@ -8210,6 +8274,8 @@ function streamChunks(){
   // Purge stale genQueue entries beyond unload distance
   compactGenQueueToRange(ox,oz,ud);
   trimGenQueueToCap(ox,oz);
+  compactDirtyQueueToLoaded();
+  trimDirtyQueueToCap(ox,oz);
 }
 function queueChunk(cx,cz,force=false){
   const k=ck(cx,cz);if(chunkMap.has(k)||genSet.has(k))return false;
@@ -8235,6 +8301,7 @@ function processGenQueue(){
     queueMissingChunksNear(pox,poz,desiredStreamTopupCap(),effectiveStreamRadius());
   }
   trimGenQueueToCap(pox,poz);
+  trimDirtyQueueToCap(pox,poz);
 
   if(!genQueue.length||lagDebug.lastFrameMs>20||!reserveChunkWork())return;
   const px=player.pos.x/S.chunkSize,pz=player.pos.z/S.chunkSize;
@@ -8675,9 +8742,10 @@ function rebuildNear(x,z){
   const set=new Set([ck(cx,cz)]);
   if(lx===0)set.add(ck(cx-1,cz));if(lx===S.chunkSize-1)set.add(ck(cx+1,cz));
   if(lz===0)set.add(ck(cx,cz-1));if(lz===S.chunkSize-1)set.add(ck(cx,cz+1));
-  set.forEach(k=>{if(!dirtySet.has(k)){dirtySet.add(k);dirtyQ.push(k);}});
+  set.forEach(queueDirtyChunk);
 }
 function flushDirty(){
+  compactDirtyQueueToLoaded();
   if(activeChunkJob||!dirtyQ.length||genQueue.length||lagDebug.lastFrameMs>16||!reserveChunkWork())return;
   const k=dirtyQ[0];dirtyQ[0]=dirtyQ[dirtyQ.length-1];dirtyQ.length--;dirtySet.delete(k);
   if(!chunkMap.has(k))return;
@@ -8688,14 +8756,12 @@ function flushDirty(){
 }
 
 function chunkVisibilityDistanceWorld(){
-  const pressure=chunkQueuePressure();
   const frameMs=lagDebug.lastFrameMs||16;
   const base=(S.renderDist+1)*S.chunkSize;
   let scale=1;
-  if(pressure>120||frameMs>30)scale=0.72;
-  else if(pressure>90||frameMs>24)scale=0.82;
-  else if(pressure>60||frameMs>20)scale=0.9;
-  return Math.max(S.chunkSize*2.4,base*scale);
+  if(frameMs>36)scale=0.95;
+  else if(frameMs>28)scale=0.97;
+  return Math.max(S.chunkSize*2.8,base*scale);
 }
 
 function isChunkInFrustumRange(c){
@@ -8719,6 +8785,9 @@ function _chunkAzimuth01(dx,dz){
 }
 
 function _chunkOcclusionEnabled(){
+  if(performance.now()<lagDebug.startupUntil+1400)return false;
+  if(chunkQueuePressure()>Math.floor(desiredGenQueueCap()*0.45))return false;
+  if(Math.hypot(player.vel.x,player.vel.z)>S.walkSpeed*1.2)return false;
   if(headInWater())return false;
   if(camera.position.y<=S.waterLevel+2)return false;
   if(Math.abs(player.pitch)>1.35)return false;
@@ -8757,6 +8826,7 @@ function updateChunkOcclusion(nowMs){
   }
 
   candidates.sort((a,b)=>a.dist-b.dist);
+  let visibleCount=0;
 
   for(let i=0;i<candidates.length;i++){
     const it=candidates[i];
@@ -8787,12 +8857,17 @@ function updateChunkOcclusion(nowMs){
 
     if(!visible&&camY<=it.topY+4.5)visible=true;
     _chunkOcclusionVisible.set(c.k,visible);
+    if(visible)visibleCount++;
 
     for(let j=0;j<sampleBins.length;j++){
       const bin=sampleBins[j][0];
       const nextH=sampleBins[j][1]+CHUNK_OCCLUSION_HORIZON_GROWTH;
       if(nextH>_chunkOcclusionBins[bin])_chunkOcclusionBins[bin]=nextH;
     }
+  }
+
+  if(candidates.length&&visibleCount<Math.max(4,Math.floor(candidates.length*0.12))){
+    _chunkOcclusionVisible.clear();
   }
 }
 
@@ -9688,10 +9763,11 @@ function buildBlockAtlas(){
   };
       waterMergeMat.customProgramCacheKey=()=>'water-v6';
   const invW=1/W,invH=1/H;
-  // Half-texel inset: shift UVs 0.5px inward from each tile boundary.
+  // Inset UVs 1px inward from each tile boundary.
   // Without this, NearestFilter samples floor(u*W) which at u=u1 = (col+1)*TILE/W gives
   // the FIRST texel of the NEXT atlas tile (could be leaves/glass = transparent → visible holes).
-  const hW=0.5*invW,hH=0.5*invH;
+  const atlasInsetPx=1;
+  const hW=atlasInsetPx*invW,hH=atlasInsetPx*invH;
   for(const[ids,faceArr]of Object.entries(mats)){
     const id=+ids;
     blockFaceUVs[id]=faceArr.map(mat=>{
