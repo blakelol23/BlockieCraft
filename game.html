@@ -7406,6 +7406,7 @@ function doRaycast(){
       const m=h.object.userData.i2b?.[h.instanceId];if(!m)continue;
       // Skip water — let the ray continue to solid blocks behind/below it
       if(h.object.userData.bt===BLOCK.WATER)continue;
+      if(!h.face||!h.face.normal)continue;
       nmx.getNormalMatrix(h.object.matrixWorld);
       _faceN.copy(h.face.normal).applyMatrix3(nmx).round();
       iState.hov={block:m,normal:{x:_faceN.x,y:_faceN.y,z:_faceN.z},type:h.object.userData.bt};
@@ -7413,16 +7414,31 @@ function doRaycast(){
     }else if(h.object.userData.type==='merged'){
       // Merged atlas mesh hit
       const fd=h.object.userData.faceData;
-      const qi=(h.faceIndex/2)|0;const fo=qi*5;
-      const lx=fd[fo],ly=fd[fo+1],lz=fd[fo+2],fi=fd[fo+3];
-      const ox=Math.round(h.object.parent.position.x);
-      const oz=Math.round(h.object.parent.position.z);
+      if(!fd||fd.length<5)continue;
+      const faceIndex=Number.isFinite(h.faceIndex)?h.faceIndex:-1;
+      if(faceIndex<0)continue;
+      const qi=(faceIndex/2)|0;const fo=qi*5;
+      if(fo+4>=fd.length)continue;
+      const lx=fd[fo],ly=fd[fo+1],lz=fd[fo+2],fi=fd[fo+3]|0;
+      const parentPos=h.object.parent&&h.object.parent.position;
+      if(!parentPos)continue;
+      const ox=Math.round(parentPos.x);
+      const oz=Math.round(parentPos.z);
       const wx=ox+lx,wy=ly,wz=oz+lz;
       const bt=getBlock(wx,wy,wz);
       // Skip water — let ray continue to solid blocks behind/below it
       if(bt===BLOCK.WATER)continue;
-      const cf=CUBE_FACES[fi];
-      iState.hov={block:{x:wx,y:wy,z:wz},normal:{x:cf.dx,y:cf.dy,z:cf.dz},type:bt};
+      const faceSet=h.object.material===waterMergeMat?WATER_CUBE_FACES:CUBE_FACES;
+      const cf=faceSet[fi]||CUBE_FACES[fi];
+      let nx,ny,nz;
+      if(cf&&Number.isFinite(cf.dx)&&Number.isFinite(cf.dy)&&Number.isFinite(cf.dz)){
+        nx=cf.dx;ny=cf.dy;nz=cf.dz;
+      }else if(h.face&&h.face.normal){
+        nmx.getNormalMatrix(h.object.matrixWorld);
+        _faceN.copy(h.face.normal).applyMatrix3(nmx).round();
+        nx=_faceN.x;ny=_faceN.y;nz=_faceN.z;
+      }else continue;
+      iState.hov={block:{x:wx,y:wy,z:wz},normal:{x:nx,y:ny,z:nz},type:bt};
       selBox.visible=true;selBox.position.set(wx+.5,wy+.5,wz+.5);return;
     }
   }
@@ -9988,7 +10004,8 @@ function buildAtlasMesh(faces,material,cubeFaces=CUBE_FACES){
   const mesh=new THREE.Mesh(geo,material);
   mesh.frustumCulled=false;
   mesh.userData.type='merged';
-  mesh.userData.faceData=faces;
+  // Keep a stable snapshot for raycast decoding; chunk build pools can reuse source arrays.
+  mesh.userData.faceData=new Int32Array(faces);
   return mesh;
 }
 
