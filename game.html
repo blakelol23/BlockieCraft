@@ -1415,36 +1415,36 @@ GS.mouseSens=THREE.MathUtils.clamp(Math.round(Number(GS.mouseSens)||50),0,100);
 const WORLD_PRESETS={
   classic:{
     name:"Classic",
-    base:8.8,landStart:0.16,landEnd:0.74,landBias:0.07,
+    base:6.8,landStart:0.17,landEnd:0.75,landBias:0.03,
     contFreq:0.0032,hillFreq:0.0118,ridgeFreq:0.0070,erosionFreq:0.0048,detailFreq:0.033,
     warpFreq:0.0040,warpAmp:12,
-    landLift:22.4,hillLift:6.4,detailLift:3.1,mountainLift:29.0,coastShelfLift:4.6,
-    oceanDepth:13.8,trenchFreq:0.0098,trenchDepth:3.8,
-    riverFreq:0.0152,riverThreshold:0.85,riverDepthMin:1.3,riverDepthRange:2.1,riverCarve:1.30,
+    landLift:20.4,hillLift:6.0,detailLift:2.8,mountainLift:28.0,coastShelfLift:3.8,
+    oceanDepth:16.2,trenchFreq:0.0098,trenchDepth:4.5,
+    riverFreq:0.0152,riverThreshold:0.85,riverDepthMin:1.5,riverDepthRange:2.3,riverCarve:1.38,
     moistFreq:0.0049,tempFreq:0.0048,
-    smoothing:0.46,microRelief:0.40,cliffStrength:0.56
+    smoothing:0.47,microRelief:0.42,cliffStrength:0.58
   },
   balanced:{
     name:"Balanced",
-    base:9.3,landStart:0.17,landEnd:0.73,landBias:0.09,
+    base:7.3,landStart:0.18,landEnd:0.74,landBias:0.04,
     contFreq:0.0035,hillFreq:0.0135,ridgeFreq:0.0078,erosionFreq:0.0052,detailFreq:0.040,
     warpFreq:0.0045,warpAmp:16,
-    landLift:24.0,hillLift:8.4,detailLift:4.2,mountainLift:33.2,coastShelfLift:5.1,
-    oceanDepth:14.8,trenchFreq:0.0106,trenchDepth:4.8,
-    riverFreq:0.0168,riverThreshold:0.84,riverDepthMin:1.5,riverDepthRange:2.4,riverCarve:1.48,
+    landLift:21.2,hillLift:7.4,detailLift:3.7,mountainLift:31.0,coastShelfLift:4.2,
+    oceanDepth:17.8,trenchFreq:0.0106,trenchDepth:5.4,
+    riverFreq:0.0168,riverThreshold:0.84,riverDepthMin:1.7,riverDepthRange:2.6,riverCarve:1.58,
     moistFreq:0.0053,tempFreq:0.0050,
-    smoothing:0.54,microRelief:0.48,cliffStrength:0.68
+    smoothing:0.53,microRelief:0.48,cliffStrength:0.67
   },
   wild:{
     name:"Wild",
-    base:9.8,landStart:0.18,landEnd:0.71,landBias:0.11,
+    base:7.8,landStart:0.18,landEnd:0.72,landBias:0.05,
     contFreq:0.0038,hillFreq:0.0158,ridgeFreq:0.0091,erosionFreq:0.0054,detailFreq:0.046,
     warpFreq:0.0049,warpAmp:20,
-    landLift:25.4,hillLift:10.3,detailLift:5.6,mountainLift:37.5,coastShelfLift:5.8,
-    oceanDepth:16.0,trenchFreq:0.0115,trenchDepth:5.9,
-    riverFreq:0.0178,riverThreshold:0.83,riverDepthMin:1.6,riverDepthRange:2.8,riverCarve:1.62,
+    landLift:22.6,hillLift:9.0,detailLift:5.0,mountainLift:35.0,coastShelfLift:4.8,
+    oceanDepth:18.2,trenchFreq:0.0115,trenchDepth:6.5,
+    riverFreq:0.0178,riverThreshold:0.83,riverDepthMin:1.9,riverDepthRange:3.0,riverCarve:1.70,
     moistFreq:0.0055,tempFreq:0.0052,
-    smoothing:0.58,microRelief:0.54,cliffStrength:0.84
+    smoothing:0.58,microRelief:0.55,cliffStrength:0.83
   }
 };
 const WORLD_META={seedInput:String(S.seed),worldName:"Overworld",fromMenu:false,worldId:""};
@@ -1745,7 +1745,7 @@ let _chunkOcclusionLastUpdate=-Infinity;
 const _chunkOcclusionVisible=new Map();
 const _jitC=new THREE.Color(),_jitA=new THREE.Color(),_jitHSL={h:0,s:0,l:0};
 const _skyColor=new THREE.Color();
-const SHADOW_UPDATE_INTERVAL=0.35;
+const SHADOW_UPDATE_INTERVAL=0.48;
 let lastShadowUpdate=-Infinity;
 // CHUNK_CULL_RADIUS replaced by AABB frustum test in isChunkVisible
 let fpsFrames=0,fpsAccum=0,fpsValue=0;
@@ -2084,7 +2084,7 @@ const hemiLight=new THREE.HemisphereLight(0xc8e8ff,0x4a6830,1.35);
 scene.add(hemiLight);
 const sun=new THREE.DirectionalLight(0xfff8e8,1.7);
 sun.castShadow=true;
-sun.shadow.mapSize.set(1024,1024);
+sun.shadow.mapSize.set(768,768);
 sun.shadow.camera.near=0.5;sun.shadow.camera.far=200;
 sun.shadow.camera.left=-65;sun.shadow.camera.right=65;
 sun.shadow.camera.top=65;sun.shadow.camera.bottom=-65;
@@ -4154,6 +4154,20 @@ function selectSlot(idx){
 //  WORLD SPAWN
 // ═══════════════════════════════
 function spawnWorld(){
+  for(const k of [...chunkMap.keys()])unloadChunk(k);
+  colCache.clear();
+  _villageCache=undefined;
+  overrides.clear();
+  waterLevels.clear();
+  waterSources.clear();
+  waterQueue.length=0;
+  waterScheduled.clear();
+  leafDecayQueue.length=0;
+  for(const light of torchLights.values())scene.remove(light);
+  torchLights.clear();
+  if(Array.isArray(mobs))for(const mob of mobs.slice())_removeMob(mob);
+  pendingMobRestoreState=null;
+  lastStreamOx=null;lastStreamOz=null;
   const sp=findSpawn(0,0);
   player.pos.copy(sp);player.vel.set(0,0,0);player.onGround=true;
   player.safePos.copy(player.pos);
@@ -5997,7 +6011,8 @@ function animate(){
   const perfPressure=chunkQueuePressure()>8||lagDebug.lastFrameMs>22||frameStart<lagDebug.startupUntil;
   const timings={};
   updateFpsCounter(dt);
-  if(clock.elapsedTime-lastShadowUpdate>=SHADOW_UPDATE_INTERVAL){renderer.shadowMap.needsUpdate=true;lastShadowUpdate=clock.elapsedTime;}
+  const shadowInterval=perfPressure?0.96:SHADOW_UPDATE_INTERVAL;
+  if(clock.elapsedTime-lastShadowUpdate>=shadowInterval){renderer.shadowMap.needsUpdate=true;lastShadowUpdate=clock.elapsedTime;}
   let mark=performance.now();
   updateDayNight(dt);updateClouds(dt);updateRain(dt);updateTorchFlicker(clock.elapsedTime);processGenQueue();
   if(!window._freezeWater&&waterMergeMat&&waterMergeMat.userData.shader)
@@ -7529,9 +7544,9 @@ function tryPlace(){
   setBlock(tx,ty,tz,selId);
   sfxBlockPlace(selId);
   // Spawn torch light
-  if(selId===BLOCK.TORCH&&torchLights.size<128){
+  if(selId===BLOCK.TORCH&&torchLights.size<64){
     const tk=blockKey(tx,ty,tz);
-    const pl=new THREE.PointLight(0xffaa44,2.2,16);
+    const pl=new THREE.PointLight(0xffaa44,1.9,14);
     pl.castShadow=false;
     pl.position.set(tx+0.5,ty+0.7,tz+0.5);
     scene.add(pl);torchLights.set(tk,pl);
@@ -8410,7 +8425,7 @@ function streamChunks(){
 
   // Unload chunks beyond render distance + 1 buffer (prevents boundary thrashing)
   const pressure=chunkQueuePressure();
-  const ud=radius+(pressure>desiredGenQueueCap()*0.7?0:1);
+  const ud=radius+((radius<=5&&pressure<=desiredGenQueueCap()*0.7)?1:0);
   const toUnload=[];
   for(const[k,c]of chunkMap){
     if(!chunkInRange(c.cx,c.cz,ox,oz,ud))toUnload.push(k);
@@ -8675,6 +8690,15 @@ function disposeChunkMeshes(meshes){
 function unloadChunk(k){
   const c=chunkMap.get(k);
   if(!c)return;
+  if(c.data&&torchLights.size){
+    const ox=c.cx*S.chunkSize,oz=c.cz*S.chunkSize;
+    for(let lx=0;lx<S.chunkSize;lx++)for(let lz=0;lz<S.chunkSize;lz++)for(let y=0;y<S.worldH;y++){
+      if(c.data[ci(lx,y,lz)]!==BLOCK.TORCH)continue;
+      const tk=blockKey(ox+lx,y,oz+lz);
+      const tl=torchLights.get(tk);
+      if(tl){scene.remove(tl);torchLights.delete(tk);}
+    }
+  }
   disposeChunkMeshes(c.meshes);
   worldRoot.remove(c.grp);
   if(c.data)releaseChunkData(c.data);
@@ -9836,7 +9860,7 @@ function initMaterials(){
   const rpSand=rpOr("sand",SA);
   const rpLog=rpOr("oak_log",WS);
   const rpLogTop=rpOr("oak_log_top",WT);
-  const rpLeaves=rpOr("oak_leaves",LV);
+  const rpLeaves=rpBlockTextureTinted("oak_leaves",0x63b74f,LV,0.18);
   const rpWater=rpOr("water_still",WA);
   const rpSnow=rpOr("snow",SN);
   const rpGlass=rpOr("glass",GL);
