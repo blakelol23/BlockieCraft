@@ -1415,36 +1415,36 @@ GS.mouseSens=THREE.MathUtils.clamp(Math.round(Number(GS.mouseSens)||50),0,100);
 const WORLD_PRESETS={
   classic:{
     name:"Classic",
-    base:6.0,landStart:0.20,landEnd:0.81,
-    contFreq:0.0035,hillFreq:0.0125,ridgeFreq:0.0072,erosionFreq:0.0050,detailFreq:0.034,
-    warpFreq:0.0042,warpAmp:12,
-    landLift:19.0,hillLift:7.0,detailLift:3.0,mountainLift:27.0,
-    oceanDepth:18.5,trenchFreq:0.0105,trenchDepth:5.0,
-    riverFreq:0.016,riverThreshold:0.84,riverDepthMin:1.8,riverDepthRange:2.6,riverCarve:1.65,
-    moistFreq:0.0042,tempFreq:0.0040,
-    smoothing:0.44,microRelief:0.44,cliffStrength:0.60
+    base:8.8,landStart:0.16,landEnd:0.74,landBias:0.07,
+    contFreq:0.0032,hillFreq:0.0118,ridgeFreq:0.0070,erosionFreq:0.0048,detailFreq:0.033,
+    warpFreq:0.0040,warpAmp:12,
+    landLift:22.4,hillLift:6.4,detailLift:3.1,mountainLift:29.0,coastShelfLift:4.6,
+    oceanDepth:13.8,trenchFreq:0.0098,trenchDepth:3.8,
+    riverFreq:0.0152,riverThreshold:0.85,riverDepthMin:1.3,riverDepthRange:2.1,riverCarve:1.30,
+    moistFreq:0.0049,tempFreq:0.0048,
+    smoothing:0.46,microRelief:0.40,cliffStrength:0.56
   },
   balanced:{
     name:"Balanced",
-    base:6.6,landStart:0.22,landEnd:0.80,
-    contFreq:0.0038,hillFreq:0.0140,ridgeFreq:0.0080,erosionFreq:0.0054,detailFreq:0.040,
-    warpFreq:0.0046,warpAmp:16,
-    landLift:20.0,hillLift:8.0,detailLift:4.0,mountainLift:30.0,
-    oceanDepth:20.0,trenchFreq:0.0112,trenchDepth:6.5,
-    riverFreq:0.0178,riverThreshold:0.83,riverDepthMin:2.1,riverDepthRange:3.0,riverCarve:1.9,
-    moistFreq:0.0044,tempFreq:0.0041,
-    smoothing:0.50,microRelief:0.52,cliffStrength:0.72
+    base:9.3,landStart:0.17,landEnd:0.73,landBias:0.09,
+    contFreq:0.0035,hillFreq:0.0135,ridgeFreq:0.0078,erosionFreq:0.0052,detailFreq:0.040,
+    warpFreq:0.0045,warpAmp:16,
+    landLift:24.0,hillLift:8.4,detailLift:4.2,mountainLift:33.2,coastShelfLift:5.1,
+    oceanDepth:14.8,trenchFreq:0.0106,trenchDepth:4.8,
+    riverFreq:0.0168,riverThreshold:0.84,riverDepthMin:1.5,riverDepthRange:2.4,riverCarve:1.48,
+    moistFreq:0.0053,tempFreq:0.0050,
+    smoothing:0.54,microRelief:0.48,cliffStrength:0.68
   },
   wild:{
     name:"Wild",
-    base:7.2,landStart:0.24,landEnd:0.79,
-    contFreq:0.0042,hillFreq:0.0162,ridgeFreq:0.0094,erosionFreq:0.0056,detailFreq:0.046,
-    warpFreq:0.0050,warpAmp:20,
-    landLift:22.0,hillLift:9.5,detailLift:5.3,mountainLift:34.0,
-    oceanDepth:21.0,trenchFreq:0.0120,trenchDepth:7.2,
-    riverFreq:0.0188,riverThreshold:0.82,riverDepthMin:2.2,riverDepthRange:3.4,riverCarve:2.05,
-    moistFreq:0.0045,tempFreq:0.0042,
-    smoothing:0.55,microRelief:0.56,cliffStrength:0.86
+    base:9.8,landStart:0.18,landEnd:0.71,landBias:0.11,
+    contFreq:0.0038,hillFreq:0.0158,ridgeFreq:0.0091,erosionFreq:0.0054,detailFreq:0.046,
+    warpFreq:0.0049,warpAmp:20,
+    landLift:25.4,hillLift:10.3,detailLift:5.6,mountainLift:37.5,coastShelfLift:5.8,
+    oceanDepth:16.0,trenchFreq:0.0115,trenchDepth:5.9,
+    riverFreq:0.0178,riverThreshold:0.83,riverDepthMin:1.6,riverDepthRange:2.8,riverCarve:1.62,
+    moistFreq:0.0055,tempFreq:0.0052,
+    smoothing:0.58,microRelief:0.54,cliffStrength:0.84
   }
 };
 const WORLD_META={seedInput:String(S.seed),worldName:"Overworld",fromMenu:false,worldId:""};
@@ -1537,7 +1537,7 @@ const BLOCK_INFO={
   [BLOCK.SAND]:       {name:"Sand",          color:0xe2cd8a,hard:0.75},
   [BLOCK.WOOD]:       {name:"Wood",          color:0x8c6735,hard:3.00},
   [BLOCK.LEAVES]:     {name:"Leaves",        color:0x3f8f4c,hard:0.30,transparent:true,opacity:.88},
-  [BLOCK.WATER]:      {name:"Water",         color:0x1f4f8c,hard:999,  transparent:true,opacity:.72},
+  [BLOCK.WATER]:      {name:"Water",         color:0x2b69a6,hard:999,  transparent:true,opacity:.66},
   [BLOCK.SNOW]:       {name:"Snow",          color:0xf1f6fb,hard:0.15},
   [BLOCK.GLASS]:      {name:"Glass",         color:0xc2eef7,hard:0.45,transparent:true,opacity:.34},
   [BLOCK.CACTUS]:     {name:"Cactus",        color:0x4a8c2a,hard:0.60},
@@ -2851,7 +2851,7 @@ const waterSources=new Set();
 const waterQueue=[];
 const waterScheduled=new Set();
 let lastWaterTick=0;
-const WATER_TICK=0.14;
+const WATER_TICK=0.11;
 const WATER_MAX_LEVEL=8;
 var _hDirs=[[1,0],[-1,0],[0,1],[0,-1]];
 
@@ -7594,14 +7594,25 @@ function _waterLevelAt(x,y,z){
   if(getBlock(x,y,z)!==BLOCK.WATER)return 0;
   const k=blockKey(x,y,z);
   if(waterSources.has(k))return WATER_MAX_LEVEL;
-  return waterLevels.get(k)??WATER_MAX_LEVEL;
+  const cached=waterLevels.get(k);
+  if(cached!==undefined)return cached;
+  // Untouched terrain water should stay calm/stable like natural source water.
+  if(!overrides.has(k)&&y<=S.waterLevel)return WATER_MAX_LEVEL;
+  return WATER_MAX_LEVEL-1;
 }
 function tickWater(x,y,z){
   const bt=getBlock(x,y,z);
   if(bt!==BLOCK.WATER)return;
   const k=blockKey(x,y,z);
-  const isSource=waterSources.has(k);
+  let isSource=waterSources.has(k);
   let level=isSource?WATER_MAX_LEVEL:(waterLevels.get(k)??WATER_MAX_LEVEL);
+
+  if(!isSource&&!waterLevels.has(k)&&!overrides.has(k)&&y<=S.waterLevel){
+    waterSources.add(k);
+    waterLevels.set(k,WATER_MAX_LEVEL);
+    isSource=true;
+    level=WATER_MAX_LEVEL;
+  }
 
   // 1) Vertical priority: feed down first for stable waterfalls.
   if(y>0){
@@ -7617,7 +7628,7 @@ function tickWater(x,y,z){
   // 2) Recompute flowing water level from neighbors/sources.
   if(!isSource){
     let desired=0;
-    if(y+1<S.worldH&&getBlock(x,y+1,z)===BLOCK.WATER){
+    if(y+1<S.worldH&&getBlock(x,y+1,z)===BLOCK.WATER&&_waterLevelAt(x,y+1,z)>=WATER_MAX_LEVEL-1){
       desired=WATER_MAX_LEVEL;
     }else{
       let maxFeed=0;
@@ -9113,12 +9124,15 @@ function genBlock(x,y,z){
   const isUnderwaterCol=col.height<S.waterLevel;
   const waterDepth=Math.max(0,S.waterLevel-col.height);
 
-  // Cave carving — 3D fbm noise below surface
-  // Only carve stone/filler layers, not surface or water zones
-  if(y>=2 && y<col.height-1 && col.height>S.waterLevel+2){
-    const caveN=fbm3(x*.050,y*.078,z*.050,2,.5,2.0,S.seed+300);
-    const thresh=0.26+(y<12?-0.04:0); // slightly more caves deep down
-    if(caveN<thresh)return BLOCK.AIR;
+  // Cave carving uses a surface buffer so terrain tops stay intact and less "holey".
+  const roofBuffer=4+(col.height<=S.waterLevel+4?2:0);
+  if(y>=2&&y<col.height-roofBuffer&&col.height>S.waterLevel+1){
+    const caveA=fbm3((x+19)*.046,(y-7)*.074,(z-31)*.046,3,.52,2.0,S.seed+300);
+    const caveB=rn3((x-53)*.052,(y+13)*.082,(z+41)*.052,S.seed+301);
+    const caveN=caveA*0.72+caveB*0.28;
+    const depthNorm=THREE.MathUtils.clamp((col.height-y)/(S.worldH*0.42),0,1);
+    const caveThreshold=0.17+depthNorm*0.13+(y<11?0.03:0);
+    if(caveN<caveThreshold)return BLOCK.AIR;
   }
 
   // Underwater sediment is intentionally tiny and sparse to avoid seabed carpets.
@@ -9196,45 +9210,65 @@ function sampleTerrainPoint(x,z,p,includeClimate=true){
   const sx=x+warpA*p.warpAmp;
   const sz=z+warpB*p.warpAmp;
 
-  const continental=_noise01(fbm2(sx*p.contFreq,sz*p.contFreq,5,.5,2.03,S.seed+10));
+  const continentalFine=_noise01(fbm2(sx*p.contFreq,sz*p.contFreq,5,.5,2.03,S.seed+10));
+  const continentalMacro=_noise01(fbm2((sx+431)*p.contFreq*0.46,(sz-317)*p.contFreq*0.46,3,.53,2.0,S.seed+11));
+  const continental=_noise01(continentalFine*0.68+continentalMacro*0.32);
   const hills=_noise01(fbm2(sx*p.hillFreq,sz*p.hillFreq,4,.5,2.05,S.seed+20));
   const ridge=_noise01(rn2(sx*p.ridgeFreq,sz*p.ridgeFreq,S.seed+30));
   const erosion=_noise01(fbm2(sx*p.erosionFreq,sz*p.erosionFreq,4,.52,2.0,S.seed+80));
   const detail=_noise01(fbm2(sx*p.detailFreq,sz*p.detailFreq,3,.54,2.2,S.seed+40));
 
-  const land=THREE.MathUtils.smoothstep(continental,p.landStart,p.landEnd);
-  const mountainBase=Math.max(0,ridge-0.2);
-  const mountain=Math.pow(mountainBase,1.58)*(0.45+(1-erosion)*0.74);
+  const landBase=THREE.MathUtils.smoothstep(continental,p.landStart,p.landEnd);
+  const land=_noise01(landBase+(p.landBias??0));
+  const coastShelf=THREE.MathUtils.clamp(1-Math.abs(land-0.30)/0.30,0,1);
+  const mountainBase=Math.max(0,ridge-0.18);
+  const mountain=Math.pow(mountainBase,1.54)*(0.43+(1-erosion)*0.78);
 
   let bh=p.base+
     land*p.landLift+
     (hills-0.5)*(p.hillLift*1.65)+
     (detail-0.5)*(p.detailLift*1.05)+
     mountain*p.mountainLift;
+  bh+=coastShelf*(p.coastShelfLift??0);
 
   const oceanMask=Math.max(0,1-land);
   if(oceanMask>0){
     const trench=_noise01(rn2(sx*p.trenchFreq,sz*p.trenchFreq,S.seed+205));
-    const trenchMask=Math.max(0,(trench-.84)/.16);
+    const trenchMask=Math.max(0,(trench-.86)/.14);
     bh-=oceanMask*oceanMask*p.oceanDepth;
     bh-=trenchMask*oceanMask*p.trenchDepth;
   }
 
   const riverBase=_noise01(fbm2(sx*p.riverFreq,sz*p.riverFreq,4,.5,2.0,S.seed+200));
   const riverRidge=1-Math.abs(riverBase*2-1);
-  const riverCore=Math.max(0,(riverRidge-p.riverThreshold)/(Math.max(0.0001,1-p.riverThreshold)));
-  const riverStrength=(land>0.2&&mountain<1.0)?riverCore*Math.max(0,1-mountain*0.66):0;
+  const riverCore=Math.pow(
+    Math.max(0,(riverRidge-p.riverThreshold)/(Math.max(0.0001,1-p.riverThreshold))),
+    1.22
+  );
+  const riverMountainPenalty=Math.max(0,1-mountain*0.74);
+  const riverStrength=(land>0.16&&riverMountainPenalty>0)?riverCore*riverMountainPenalty:0;
   if(riverStrength>0){
+    const riverCarveStrength=riverStrength*(0.58+0.42*(1-erosion));
     const riverTarget=S.waterLevel-(p.riverDepthMin+riverStrength*p.riverDepthRange);
-    bh=THREE.MathUtils.lerp(bh,riverTarget,Math.min(1,riverStrength*p.riverCarve));
+    bh=THREE.MathUtils.lerp(bh,riverTarget,Math.min(1,riverCarveStrength*p.riverCarve));
   }
 
   let moisture=.5,temperature=.5;
   if(includeClimate){
-    moisture=_noise01(fbm2(sx*p.moistFreq,sz*p.moistFreq,4,.55,2.0,S.seed+50));
-    temperature=_noise01(fbm2(sx*p.tempFreq+90,sz*p.tempFreq-45,4,.55,2.0,S.seed+60));
+    const moistLocal=_noise01(fbm2(sx*p.moistFreq,sz*p.moistFreq,4,.55,2.0,S.seed+50));
+    const moistMacro=_noise01(fbm2((sx-270)*p.moistFreq*0.42,(sz+190)*p.moistFreq*0.42,3,.52,2.0,S.seed+51));
+    const tempLocal=_noise01(fbm2(sx*p.tempFreq+90,sz*p.tempFreq-45,4,.55,2.0,S.seed+60));
+    const tempMacro=_noise01(fbm2((sx+170)*p.tempFreq*0.40,(sz-140)*p.tempFreq*0.40,3,.52,2.0,S.seed+62));
     const latitude=_noise01(fbm2((sx+320)*.0012,(sz-180)*.0012,2,.5,2.0,S.seed+61));
-    temperature=THREE.MathUtils.clamp(temperature*.82+latitude*.18,0,1);
+    const altitudeCooling=Math.max(0,bh-(S.waterLevel+8))*0.011;
+    moisture=THREE.MathUtils.clamp(
+      moistLocal*0.68+moistMacro*0.32+riverStrength*0.10-Math.max(0,mountain-0.35)*0.18,
+      0,1
+    );
+    temperature=THREE.MathUtils.clamp(
+      tempLocal*0.60+tempMacro*0.28+latitude*0.12+(land-0.5)*0.06-altitudeCooling,
+      0,1
+    );
   }
 
   bh=_finite(bh,p.base);
@@ -9267,87 +9301,112 @@ function getCol(x,z){
     bh+=cliffN*cliffMask*2.3;
   }
 
-  const height=Math.floor(THREE.MathUtils.clamp(_finite(bh,p.base),2,S.worldH-5));
-  const temperature=_noise01(center.temperature,.5);
-  const moisture=_noise01(center.moisture,.5);
+  const height=Math.floor(THREE.MathUtils.clamp(_finite(bh,p.base),2,S.worldH-4));
+  const biomeShift=(fbm2((x+143)*.010,(z-217)*.010,2,.5,2.0,S.seed+76)-0.5);
+  const temperature=_noise01(center.temperature+biomeShift*0.07,.5);
+  const moisture=_noise01(center.moisture-biomeShift*0.06,.5);
   const riverStrength=_noise01(center.riverStrength,0);
   const land=_noise01(center.land,.5);
 
-  const beach=height<=S.waterLevel+1&&height>=S.waterLevel-2;
+  const beach=height<=S.waterLevel+2&&height>=S.waterLevel-2;
   const under=height<S.waterLevel-1;
-  const deepOcean=height<S.waterLevel-5;
-  const alpine=center.mountain>.76&&height>S.waterLevel+15;
-  const stonyHigh=height>S.waterLevel+14&&center.mountain>.62&&center.erosion<.50;
-  const roughCliff=(cliffMask>.14||slope>2.9)&&land>.28&&land<.84;
-  const isRiver=riverStrength>0.32&&height<=S.waterLevel+2;
+  const deepOcean=height<S.waterLevel-6;
+  const alpine=center.mountain>.74&&height>S.waterLevel+16;
+  const stonyHigh=height>S.waterLevel+13&&center.mountain>.59&&center.erosion<.52;
+  const roughCliff=(cliffMask>.15||slope>2.8)&&land>.24&&land<.88;
+  const isRiver=riverStrength>0.34&&height<=S.waterLevel+2&&!deepOcean;
 
-  let biome="plains",surface=BLOCK.GRASS,filler=BLOCK.DIRT,subFiller=BLOCK.DIRT,treeType="oak";
-
+  let biome="plains";
   if(deepOcean){
     biome="ocean";
-    if(temperature<.25){surface=BLOCK.CLAY;filler=BLOCK.CLAY;subFiller=BLOCK.STONE;}
-    else if(temperature>.68&&moisture<.42){surface=BLOCK.RED_SAND;filler=BLOCK.SAND;subFiller=BLOCK.SAND;}
-    else{surface=BLOCK.SAND;filler=BLOCK.SAND;subFiller=BLOCK.CLAY;}
-    treeType="none";
   }else if(isRiver){
     biome="river";
-    const rm=h2d(x*9+31,z*7+17,S.seed+74);
-    if(rm>.78){surface=BLOCK.GRAVEL;filler=BLOCK.GRAVEL;subFiller=BLOCK.CLAY;}
-    else if(rm<.20){surface=BLOCK.CLAY;filler=BLOCK.CLAY;subFiller=BLOCK.CLAY;}
-    else{surface=BLOCK.SAND;filler=BLOCK.SAND;subFiller=BLOCK.CLAY;}
-    treeType="none";
   }else if(stonyHigh){
     biome="stony_peaks";
-    surface=BLOCK.STONE;filler=BLOCK.STONE;subFiller=BLOCK.STONE;treeType="none";
   }else if(alpine){
     biome="mountain";
-    surface=BLOCK.SNOW;filler=BLOCK.STONE;subFiller=BLOCK.STONE;treeType="pine";
-  }else if(temperature<.24){
-    if(height>S.waterLevel+4){
-      biome=temperature<.15?"snow":"taiga";
-      surface=BLOCK.SNOW;filler=BLOCK.DIRT;subFiller=BLOCK.STONE;treeType="pine";
-    }else{
-      biome="tundra";
-      surface=BLOCK.SNOW;filler=BLOCK.DIRT;subFiller=BLOCK.STONE;treeType="none";
-    }
-  }else if(temperature>.70){
-    if(moisture<.24&&land>.42&&center.erosion<.46){
-      biome="badlands";
-      surface=BLOCK.RED_SAND;filler=BLOCK.RED_SAND;subFiller=BLOCK.GRAVEL;treeType="cactus";
-    }else if(moisture<.39){
-      biome="desert";
-      surface=BLOCK.SAND;filler=BLOCK.SAND;subFiller=BLOCK.SAND;treeType="cactus";
-    }else if(moisture>.74){
-      biome="jungle";
-      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;treeType="jungle";
-    }else{
-      biome="savanna";
-      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;treeType="acacia";
-    }
+  }else if(temperature<.23){
+    if(moisture>.56)biome="taiga";
+    else biome=height>S.waterLevel+5?"snow":"tundra";
+  }else if(temperature<.44){
+    if(moisture<.26)biome="plains";
+    else if(moisture<.62)biome=land>.62?"forest":"meadow";
+    else biome=height<=S.waterLevel+4?"swamp":"forest";
+  }else if(temperature<.69){
+    if(moisture<.23)biome="savanna";
+    else if(moisture<.47)biome=land>.66?"meadow":"plains";
+    else if(moisture<.74)biome="forest";
+    else biome=height<=S.waterLevel+3?"swamp":"jungle";
   }else{
-    if(moisture>.84&&temperature>.42&&temperature<.66){
-      biome="mangrove";
-      surface=BLOCK.MUD;filler=BLOCK.MUD;subFiller=BLOCK.CLAY;treeType="jungle";
-    }else if(moisture>.76&&temperature>.35&&temperature<.60){
-      biome="swamp";
-      surface=BLOCK.MUD;filler=BLOCK.MUD;subFiller=BLOCK.CLAY;treeType="oak";
-    }else if(moisture>.52&&center.erosion>.55){
-      biome="meadow";
-      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;treeType="none";
-    }else if(moisture>.60){
-      biome="forest";
-      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;treeType=moisture>.76?"birch":"oak";
-    }else if(moisture>.36){
-      biome="plains";
-      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;
-      treeType=h2d(x*5,z*7,S.seed+72)<.36?"oak":"none";
-    }else{
-      biome="plains";
-      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;treeType="oak";
-    }
+    if(moisture<.18&&center.erosion<.55)biome="badlands";
+    else if(moisture<.36)biome="desert";
+    else if(moisture<.62)biome="savanna";
+    else if(moisture<.82)biome="jungle";
+    else biome=height<=S.waterLevel+4?"mangrove":"jungle";
   }
 
-  if(beach&&biome!=="snow"&&biome!=="tundra"&&biome!=="river"&&biome!=="ocean"){
+  let surface=BLOCK.GRASS,filler=BLOCK.DIRT,subFiller=BLOCK.DIRT,treeType="oak";
+  switch(biome){
+    case "ocean":
+      if(temperature<.25){surface=BLOCK.CLAY;filler=BLOCK.CLAY;subFiller=BLOCK.STONE;}
+      else if(temperature>.68&&moisture<.42){surface=BLOCK.RED_SAND;filler=BLOCK.SAND;subFiller=BLOCK.SAND;}
+      else{surface=BLOCK.SAND;filler=BLOCK.SAND;subFiller=BLOCK.CLAY;}
+      treeType="none";
+      break;
+    case "river":{
+      const rm=h2d(x*9+31,z*7+17,S.seed+74);
+      if(rm>.78){surface=BLOCK.GRAVEL;filler=BLOCK.GRAVEL;subFiller=BLOCK.CLAY;}
+      else if(rm<.20){surface=BLOCK.CLAY;filler=BLOCK.CLAY;subFiller=BLOCK.CLAY;}
+      else{surface=BLOCK.SAND;filler=BLOCK.SAND;subFiller=BLOCK.CLAY;}
+      treeType="none";
+      break;
+    }
+    case "stony_peaks":
+      surface=BLOCK.STONE;filler=BLOCK.STONE;subFiller=BLOCK.STONE;treeType="none";
+      break;
+    case "mountain":
+      surface=BLOCK.SNOW;filler=BLOCK.STONE;subFiller=BLOCK.STONE;treeType="pine";
+      break;
+    case "snow":
+      surface=BLOCK.SNOW;filler=BLOCK.DIRT;subFiller=BLOCK.STONE;treeType="pine";
+      break;
+    case "taiga":
+      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.STONE;treeType="pine";
+      break;
+    case "tundra":
+      surface=BLOCK.SNOW;filler=BLOCK.DIRT;subFiller=BLOCK.STONE;treeType="none";
+      break;
+    case "badlands":
+      surface=BLOCK.RED_SAND;filler=BLOCK.RED_SAND;subFiller=BLOCK.GRAVEL;treeType="cactus";
+      break;
+    case "desert":
+      surface=BLOCK.SAND;filler=BLOCK.SAND;subFiller=BLOCK.SAND;treeType="cactus";
+      break;
+    case "jungle":
+      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;treeType="jungle";
+      break;
+    case "savanna":
+      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;treeType="acacia";
+      break;
+    case "mangrove":
+      surface=BLOCK.MUD;filler=BLOCK.MUD;subFiller=BLOCK.CLAY;treeType="jungle";
+      break;
+    case "swamp":
+      surface=BLOCK.MUD;filler=BLOCK.MUD;subFiller=BLOCK.CLAY;treeType="oak";
+      break;
+    case "meadow":
+      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;treeType="none";
+      break;
+    case "forest":
+      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;treeType=moisture>.72?"birch":"oak";
+      break;
+    default:
+      surface=BLOCK.GRASS;filler=BLOCK.DIRT;subFiller=BLOCK.DIRT;
+      treeType=h2d(x*5,z*7,S.seed+72)<.30?"oak":"none";
+      break;
+  }
+
+  if(beach&&biome!=="snow"&&biome!=="tundra"&&biome!=="river"&&biome!=="ocean"&&biome!=="mountain"&&biome!=="stony_peaks"){
     const shoreN=h2d(x*9+31,z*7+17,S.seed+73);
     if(roughCliff&&shoreN>.36){
       biome="rocky_shore";
@@ -9372,7 +9431,9 @@ function getCol(x,z){
     }else if(roughCliff||biome==="mountain"||biome==="stony_peaks"||biome==="rocky_shore"){
       surface=BLOCK.STONE;filler=BLOCK.STONE;subFiller=BLOCK.STONE;
     }else{
-      surface=BLOCK.DIRT;filler=BLOCK.DIRT;subFiller=BLOCK.STONE;
+      surface=temperature>.66?BLOCK.SAND:BLOCK.DIRT;
+      filler=surface;
+      subFiller=BLOCK.STONE;
     }
     treeType="none";
   }
@@ -9380,14 +9441,15 @@ function getCol(x,z){
   if((biome==="mountain"||biome==="stony_peaks")&&height>S.waterLevel+22)treeType="pine";
 
   const dens={
-    snow:.007,taiga:.030,tundra:0,desert:.005,savanna:.009,forest:.048,plains:.017,
-    river:0,mountain:.010,jungle:.095,swamp:.028,badlands:.002,meadow:.010,mangrove:.026,
+    snow:.002,taiga:.040,tundra:0,desert:.004,savanna:.014,forest:.056,plains:.020,
+    river:0,mountain:.012,jungle:.102,swamp:.033,badlands:.001,meadow:.008,mangrove:.030,
     rocky_shore:0,stony_peaks:0,ocean:0
   };
-  const slopeTreePenalty=THREE.MathUtils.clamp(1-slope*0.22,0,1);
-  const tch=(biome!=="snow"||alpine)&&!beach&&!under&&!isRiver?(dens[biome]??0.018)*slopeTreePenalty:0;
+  const slopeTreePenalty=THREE.MathUtils.clamp(1-slope*0.20,0,1);
+  const moistureTreeBoost=THREE.MathUtils.clamp(0.72+moisture*0.45,0.55,1.22);
+  const tch=(biome!=="snow"||alpine)&&!beach&&!under&&!isRiver?(dens[biome]??0.018)*slopeTreePenalty*moistureTreeBoost:0;
   const tn=h2d(x*13,z*17,S.seed+70);
-  const hasTree=treeType!=="none"&&tch>0&&tn>1-tch&&h2d(Math.floor(x/2),Math.floor(z/2),S.seed+71)>.78;
+  const hasTree=treeType!=="none"&&tch>0&&tn>1-tch&&h2d(Math.floor(x/2),Math.floor(z/2),S.seed+71)>.74;
 
   const col={height,biome,surface,filler,subFiller,hasTree,treeType};
   colCache.set(k,col);
@@ -9913,7 +9975,7 @@ function buildBlockAtlas(){
   const waterCrestGLSL=_v3(waterCrest);
   const waterFoamGLSL=_v3(waterFoamTint);
   waterMergeMat=new THREE.MeshStandardMaterial({
-    color:waterInfo.color??0x1f4f8c,roughness:0.04,metalness:0.0,
+    color:waterInfo.color??0x1f4f8c,roughness:0.12,metalness:0.0,
     transparent:true,opacity:waterOpacity,depthWrite:false,
     side:THREE.DoubleSide,toneMapped:false
   });
@@ -9934,20 +9996,20 @@ function buildBlockAtlas(){
     shader.fragmentShader='uniform float uWaterTime;\nvarying vec2 vWaterUV;\n'+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace(
       '#include <map_fragment>',
-      `float _w1=sin(vWaterUV.x*0.88+uWaterTime*0.78)*0.5+0.5;
-       float _w2=sin(vWaterUV.y*0.74-uWaterTime*0.62+1.31)*0.5+0.5;
-       float _w3=sin((vWaterUV.x+vWaterUV.y)*0.52+uWaterTime*0.44)*0.5+0.5;
+      `float _w1=sin(vWaterUV.x*0.62+uWaterTime*0.52)*0.5+0.5;
+       float _w2=sin(vWaterUV.y*0.56-uWaterTime*0.43+1.31)*0.5+0.5;
+       float _w3=sin((vWaterUV.x+vWaterUV.y)*0.39+uWaterTime*0.31)*0.5+0.5;
        float _wave=(_w1*0.43+_w2*0.34+_w3*0.23);
-       float _crest=smoothstep(0.70,0.96,_wave);
-       float _foam=smoothstep(0.82,1.0,_w3)*(0.35+0.25*_crest);
+       float _crest=smoothstep(0.74,0.97,_wave);
+       float _foam=smoothstep(0.86,1.0,_w3)*(0.22+0.18*_crest);
         vec3 _cD=${waterDeepGLSL};
         vec3 _cM=${waterMidGLSL};
         vec3 _cC=${waterCrestGLSL};
         vec3 _foamTint=${waterFoamGLSL};
        vec3 _wc=_wave>0.60?mix(_cM,_cC,(_wave-0.60)/0.40):mix(_cD,_cM,_wave/0.60);
-        _wc=mix(_wc,_foamTint,_crest*0.22);
-        _wc+=_foamTint*_foam*0.26;
-        float _alphaMask=clamp(0.74+_crest*0.16+_foam*0.10,0.70,1.0);
+        _wc=mix(_wc,_foamTint,_crest*0.15);
+        _wc+=_foamTint*_foam*0.16;
+        float _alphaMask=clamp(0.78+_crest*0.09+_foam*0.06,0.74,0.95);
        diffuseColor=vec4(_wc,_alphaMask*opacity);`
     );
   };
