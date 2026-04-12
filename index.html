@@ -1786,23 +1786,27 @@
 
     const camera=new THREE.PerspectiveCamera(62,window.innerWidth/window.innerHeight,0.1,420);
 
-    const amb=new THREE.AmbientLight(0x6f86a8,0.34);
+    const amb=new THREE.AmbientLight(0x6f86a8,0.40);
     scene.add(amb);
 
-    const hemi=new THREE.HemisphereLight(0xdcecff,0x5d6f4d,0.82);
+    const hemi=new THREE.HemisphereLight(0xdcecff,0x5d6f4d,0.96);
     scene.add(hemi);
 
-    const sun=new THREE.DirectionalLight(0xfff1d6,1.42);
+    const sun=new THREE.DirectionalLight(0xfff1d6,1.58);
     sun.position.set(54,72,-24);
-    scene.add(sun);
+    scene.add(sun,sun.target);
 
-    const fillSun=new THREE.DirectionalLight(0xa7c3f0,0.38);
+    const fillSun=new THREE.DirectionalLight(0xa7c3f0,0.48);
     fillSun.position.set(-42,22,34);
-    scene.add(fillSun);
+    scene.add(fillSun,fillSun.target);
 
-    const rimSun=new THREE.DirectionalLight(0x7ea2d5,0.22);
+    const rimSun=new THREE.DirectionalLight(0x7ea2d5,0.28);
     rimSun.position.set(16,14,-58);
-    scene.add(rimSun);
+    scene.add(rimSun,rimSun.target);
+
+    const moon=new THREE.DirectionalLight(0x92ade0,0.16);
+    moon.position.set(-34,26,42);
+    scene.add(moon,moon.target);
 
     const worldRoot=new THREE.Group();
     scene.add(worldRoot);
@@ -1851,6 +1855,18 @@
     let noiseSeedOffset=0;
     let menuSkyboxTex=null;
     let menuCloudGroup=null;
+    let menuSunOrb=null;
+    let menuSunGlow=null;
+    let menuMoonOrb=null;
+    let menuMoonGlow=null;
+    let menuStarDome=null;
+    let menuSkyPhase=0.18;
+    const MENU_SKY_CYCLE_SECONDS=180;
+    const _menuSkyDir=new THREE.Vector3();
+    const _menuSkyOpp=new THREE.Vector3();
+    const _menuSunPos=new THREE.Vector3();
+    const _menuMoonPos=new THREE.Vector3();
+    const _menuSkyColor=new THREE.Color();
     let bgWorldBounds={
       minX:MENU_BG_MIN_X,
       maxX:MENU_BG_MAX_X,
@@ -1959,7 +1975,7 @@
       const layer=new THREE.Group();
       layer.name="menuCloudLayer";
 
-      const cloudCount=14+Math.floor(rand()*4);
+      const cloudCount=18+Math.floor(rand()*5);
       const minX=bgWorldBounds.minX-40;
       const maxX=bgWorldBounds.maxX+40;
       const minZ=bgWorldBounds.minZ-52;
@@ -1971,8 +1987,8 @@
         const cloud=new THREE.Group();
         cloud.frustumCulled=false;
 
-        const puffCount=3+Math.floor(rand()*4);
-        const puffOpacity=0.66+rand()*0.12;
+        const puffCount=3+Math.floor(rand()*5);
+        const puffOpacity=0.70+rand()*0.12;
         for(let p=0;p<puffCount;p++){
           const puff=new THREE.Mesh(
             new THREE.BoxGeometry(8+rand()*8,2+rand()*1.6,6+rand()*7),
@@ -1987,7 +2003,10 @@
           THREE.MathUtils.lerp(minY,maxY,rand()),
           THREE.MathUtils.lerp(minZ,maxZ,rand())
         );
-        cloud.userData.spd=1.15+rand()*1.2;
+        cloud.userData.baseY=cloud.position.y;
+        cloud.userData.phase=rand()*Math.PI*2;
+        cloud.userData.bob=0.14+rand()*0.12;
+        cloud.userData.spd=1.35+rand()*1.75;
         cloud.userData.resetZ=()=>THREE.MathUtils.lerp(minZ,maxZ,rand());
         layer.add(cloud);
       }
@@ -2000,12 +2019,231 @@
       const camX=camera.position.x;
 
       for(const cloud of menuCloudGroup.children){
+        cloud.userData.phase=(cloud.userData.phase||0)+dt*(0.55+cloud.userData.spd*0.11);
         cloud.position.x+=cloud.userData.spd*dt;
+        cloud.position.y=cloud.userData.baseY+Math.sin(cloud.userData.phase)*cloud.userData.bob;
         if(cloud.position.x-camX>120){
           cloud.position.x=camX-120;
           cloud.position.z=cloud.userData.resetZ();
         }
       }
+    }
+
+    function makeMenuSunTexture(){
+      const cv=document.createElement("canvas");
+      cv.width=cv.height=32;
+      const ctx=cv.getContext("2d");
+      ctx.clearRect(0,0,32,32);
+      ctx.fillStyle="#f7dd66";
+      ctx.fillRect(6,6,20,20);
+      ctx.fillStyle="#ffe98a";
+      ctx.fillRect(8,8,16,16);
+      ctx.fillStyle="#fff4b3";
+      ctx.fillRect(11,11,10,10);
+      const tex=new THREE.CanvasTexture(cv);
+      tex.magFilter=THREE.NearestFilter;
+      tex.minFilter=THREE.NearestFilter;
+      tex.generateMipmaps=false;
+      tex.colorSpace=THREE.SRGBColorSpace;
+      tex.needsUpdate=true;
+      return tex;
+    }
+
+    function makeMenuMoonTexture(){
+      const cv=document.createElement("canvas");
+      cv.width=cv.height=32;
+      const ctx=cv.getContext("2d");
+      ctx.clearRect(0,0,32,32);
+      ctx.fillStyle="#c9d5ee";
+      ctx.fillRect(6,6,20,20);
+      ctx.fillStyle="#dde7f7";
+      ctx.fillRect(8,8,16,16);
+      ctx.fillStyle="#aab8d8";
+      [[10,10,2,2],[18,9,3,2],[14,18,2,3],[20,18,2,2],[9,16,2,2]].forEach(([x,y,w,h])=>ctx.fillRect(x,y,w,h));
+      const tex=new THREE.CanvasTexture(cv);
+      tex.magFilter=THREE.NearestFilter;
+      tex.minFilter=THREE.NearestFilter;
+      tex.generateMipmaps=false;
+      tex.colorSpace=THREE.SRGBColorSpace;
+      tex.needsUpdate=true;
+      return tex;
+    }
+
+    function makeMenuStarDomeTexture(){
+      const cv=document.createElement("canvas");
+      cv.width=1024;
+      cv.height=512;
+      const ctx=cv.getContext("2d");
+      ctx.fillStyle="#03060f";
+      ctx.fillRect(0,0,cv.width,cv.height);
+      for(let i=0;i<720;i++){
+        const x=(Math.random()*cv.width)|0;
+        const y=(Math.random()*Math.floor(cv.height*0.86))|0;
+        const b=Math.random();
+        if(b>0.93){
+          ctx.fillStyle="#f6fbff";
+          ctx.fillRect(x,y,2,2);
+        }else if(b>0.66){
+          ctx.fillStyle="#dbe9ff";
+          ctx.fillRect(x,y,1,1);
+        }else{
+          ctx.fillStyle="#b7c8ea";
+          ctx.fillRect(x,y,1,1);
+        }
+      }
+      const tex=new THREE.CanvasTexture(cv);
+      tex.magFilter=THREE.NearestFilter;
+      tex.minFilter=THREE.NearestFilter;
+      tex.generateMipmaps=false;
+      tex.colorSpace=THREE.SRGBColorSpace;
+      tex.wrapS=THREE.RepeatWrapping;
+      tex.wrapT=THREE.ClampToEdgeWrapping;
+      tex.needsUpdate=true;
+      return tex;
+    }
+
+    function makeMenuGlowMaterial(colorHex){
+      return new THREE.ShaderMaterial({
+        transparent:true,
+        depthWrite:false,
+        depthTest:true,
+        side:THREE.DoubleSide,
+        toneMapped:false,
+        uniforms:{
+          uTint:{value:new THREE.Color(colorHex)},
+          uStrength:{value:1}
+        },
+        vertexShader:`varying vec2 vUv;
+void main(){
+  vUv=uv;
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
+}`,
+        fragmentShader:`varying vec2 vUv;
+uniform vec3 uTint;
+uniform float uStrength;
+void main(){
+  vec2 p=vUv-0.5;
+  float d=length(p)*2.0;
+  float core=smoothstep(0.86,0.0,d);
+  float halo=smoothstep(1.0,0.22,d);
+  float aura=smoothstep(1.0,0.58,d)*0.28;
+  float alpha=(core*core*0.78+halo*0.20+aura)*uStrength;
+  gl_FragColor=vec4(uTint,alpha);
+}`
+      });
+    }
+
+    function ensureMenuCelestialRig(){
+      if(menuSunOrb)return;
+
+      menuSunGlow=new THREE.Mesh(
+        new THREE.PlaneGeometry(28,28),
+        makeMenuGlowMaterial(0xffe3b8)
+      );
+      menuSunGlow.frustumCulled=false;
+      menuSunGlow.renderOrder=1;
+
+      menuSunOrb=new THREE.Mesh(
+        new THREE.PlaneGeometry(13.6,13.6),
+        new THREE.MeshBasicMaterial({map:makeMenuSunTexture(),transparent:true,color:0xffffff,fog:false,depthWrite:false,depthTest:true,side:THREE.DoubleSide,toneMapped:false})
+      );
+      menuSunOrb.frustumCulled=false;
+      menuSunOrb.renderOrder=2;
+
+      menuMoonGlow=new THREE.Mesh(
+        new THREE.PlaneGeometry(22,22),
+        makeMenuGlowMaterial(0xcad8f4)
+      );
+      menuMoonGlow.frustumCulled=false;
+      menuMoonGlow.renderOrder=1;
+
+      menuMoonOrb=new THREE.Mesh(
+        new THREE.PlaneGeometry(11.2,11.2),
+        new THREE.MeshBasicMaterial({map:makeMenuMoonTexture(),transparent:true,color:0xffffff,fog:false,depthWrite:false,depthTest:true,side:THREE.DoubleSide,toneMapped:false})
+      );
+      menuMoonOrb.frustumCulled=false;
+      menuMoonOrb.renderOrder=2;
+
+      menuStarDome=new THREE.Mesh(
+        new THREE.SphereGeometry(320,32,20),
+        new THREE.MeshBasicMaterial({map:makeMenuStarDomeTexture(),color:0xffffff,fog:false,transparent:true,opacity:0,depthWrite:false,side:THREE.BackSide,toneMapped:false})
+      );
+      menuStarDome.frustumCulled=false;
+      menuStarDome.renderOrder=-1;
+
+      scene.add(menuStarDome,menuSunGlow,menuSunOrb,menuMoonGlow,menuMoonOrb);
+    }
+
+    function updateMenuCelestials(dt){
+      ensureMenuCelestialRig();
+
+      menuSkyPhase=(menuSkyPhase+dt/MENU_SKY_CYCLE_SECONDS)%1;
+      const angle=menuSkyPhase*Math.PI*2-Math.PI/2;
+      _menuSkyDir.set(
+        Math.cos(angle)*0.95,
+        Math.sin(angle)*0.82+0.12,
+        Math.sin(angle*0.62+0.58)*0.22
+      ).normalize();
+      _menuSkyOpp.copy(_menuSkyDir).negate();
+
+      const daylight=THREE.MathUtils.clamp(_menuSkyDir.y*0.5+0.5,0.16,1);
+      const night=1-daylight;
+      const dusk=1-Math.abs(daylight-0.5)*2;
+
+      _menuSkyColor.setHSL(0.58-night*0.03,0.48+daylight*0.06,0.60+daylight*0.14+dusk*0.03);
+      scene.fog.color.copy(_menuSkyColor);
+      renderer.setClearColor(_menuSkyColor,1);
+
+      amb.intensity=0.34+daylight*0.26;
+      amb.color.setHSL(0.58,0.34,0.42+daylight*0.18);
+
+      hemi.intensity=0.78+daylight*0.34;
+      hemi.color.setHSL(0.58,0.34,0.72+daylight*0.10);
+      hemi.groundColor.setHSL(0.12,0.24,0.22+daylight*0.12);
+
+      sun.intensity=0.22+daylight*1.48;
+      sun.color.setHSL(0.11-night*0.01,0.72,0.58+daylight*0.10);
+      _menuSunPos.copy(camera.position).addScaledVector(_menuSkyDir,210);
+      sun.position.copy(_menuSunPos);
+      sun.target.position.copy(camera.position).addScaledVector(_menuSkyDir,-12);
+      sun.target.updateMatrixWorld();
+
+      fillSun.intensity=0.14+daylight*0.36;
+      fillSun.color.setHSL(0.58,0.30,0.68+daylight*0.08);
+      fillSun.position.copy(camera.position).addScaledVector(_menuSkyDir,148).addScaledVector(_menuSkyOpp,20);
+      fillSun.target.position.copy(camera.position);
+      fillSun.target.updateMatrixWorld();
+
+      rimSun.intensity=0.08+dusk*0.20;
+      rimSun.color.setHSL(0.60,0.28,0.56+night*0.18);
+      rimSun.position.copy(camera.position).addScaledVector(_menuSkyOpp,170);
+      rimSun.target.position.copy(camera.position);
+      rimSun.target.updateMatrixWorld();
+
+      moon.intensity=0.10+night*0.42;
+      moon.color.setHSL(0.61,0.28,0.74+night*0.10);
+      _menuMoonPos.copy(camera.position).addScaledVector(_menuSkyOpp,190);
+      moon.position.copy(_menuMoonPos);
+      moon.target.position.copy(camera.position).addScaledVector(_menuSkyOpp,-8);
+      moon.target.updateMatrixWorld();
+
+      menuSunGlow.position.copy(camera.position).addScaledVector(_menuSkyDir,206);
+      menuSunGlow.lookAt(camera.position);
+      menuSunGlow.material.uniforms.uStrength.value=0.34+daylight*0.48;
+
+      menuSunOrb.position.copy(camera.position).addScaledVector(_menuSkyDir,204);
+      menuSunOrb.lookAt(camera.position);
+
+      menuMoonGlow.position.copy(camera.position).addScaledVector(_menuSkyOpp,188);
+      menuMoonGlow.lookAt(camera.position);
+      menuMoonGlow.material.uniforms.uStrength.value=0.18+night*0.42;
+
+      menuMoonOrb.position.copy(camera.position).addScaledVector(_menuSkyOpp,186);
+      menuMoonOrb.lookAt(camera.position);
+
+      menuStarDome.position.copy(camera.position);
+      menuStarDome.rotation.y+=dt*0.002;
+      menuStarDome.material.opacity=night*night*0.82;
     }
 
     function h2(x,z,s){
@@ -2340,6 +2578,9 @@
       menuWorldPresetKey=PRESET_HINTS[presetSelect.value]?presetSelect.value:"balanced";
       clearMenuColumnCache();
       applyMenuSkybox(noiseSeedOffset);
+      ensureMenuCelestialRig();
+      menuSkyPhase=0.18+(h2(13,17,942)-0.5)*0.04;
+      updateMenuCelestials(0);
 
       const minX=MENU_BG_MIN_X;
       const maxX=MENU_BG_MAX_X;
@@ -3166,6 +3407,7 @@
       camera.position.copy(camSmPos);
       camera.lookAt(camSmLook);
       camera.updateMatrixWorld();
+      updateMenuCelestials(dt);
       updateMenuClouds(dt);
       if(bgBuildStepFn)bgBuildStepFn();
       updateMenuOcclusion(t);
