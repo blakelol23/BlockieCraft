@@ -1042,7 +1042,7 @@ const RESOURCE_PACK_BLOCK_KEYS=[
   "furnace_front","furnace_side","furnace_top"
 ];
 const RESOURCE_PACK_ITEM_KEYS=[
-  "stick","water_bucket","apple","bread","cooked_porkchop","porkchop",
+  "stick","water_bucket","apple","bread","cooked_porkchop",
   "wooden_pickaxe","stone_pickaxe","iron_pickaxe",
   "wooden_axe","stone_axe","wooden_shovel","stone_shovel",
   "coal","iron_ingot","gold_ingot","diamond"
@@ -3847,7 +3847,7 @@ function getPackItemTextureName(id){
     case ITEM.APPLE:return"apple";
     case ITEM.BREAD:return"bread";
     case ITEM.COOKED_PORKCHOP:return"cooked_porkchop";
-    case ITEM.RAW_MEAT:return"porkchop";
+    case ITEM.RAW_MEAT:return"";
     case ITEM.COAL:return"coal";
     case ITEM.IRON_INGOT:return"iron_ingot";
     case ITEM.GOLD_INGOT:return"gold_ingot";
@@ -4353,7 +4353,7 @@ function findSpawn(ox,oz){
 // ═══════════════════════════════
 const GS_FPS_OPTIONS=[0,30,60,120,144,240]; // 0 = Unlimited
 let _gsSliderDrag=null;
-let settingsPanel="pause";
+var settingsPanel="pause";
 
 function _cloneSlotForSave(slot){
   if(!slot||typeof slot!=="object")return null;
@@ -10470,28 +10470,32 @@ function drawFood(ctx,full,half){
   // Chicken leg / food icon (simplified)
   const col=full?"#c8782a":half?"#c8782a":"#444";
   const hl=full?"#e8a85a":half?"#e8a85a":"#333";
-  for(let r=0;r<FOOD_ICON_SHAPE.length;r++)for(let c=0;c<FOOD_ICON_SHAPE[r].length;c++){
-    if(!FOOD_ICON_SHAPE[r][c])continue;
+  const shape=getFoodIconShape();
+  for(let r=0;r<shape.length;r++)for(let c=0;c<shape[r].length;c++){
+    if(!shape[r][c])continue;
     ctx.fillStyle=(r<=1)?hl:col;
     if(half&&c>=4&&r<4&&!full)ctx.fillStyle="#333";
     ctx.fillRect(c,r,1,1);
   }
 }
 
-const FOOD_ICON_SHAPE=[
-  [0,0,1,1,1,1,0,0,0],[0,1,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,0],[0,0,1,1,1,1,1,1,0],
-  [0,0,0,1,1,1,1,0,0],[0,0,0,0,1,1,0,0,0],[0,0,0,0,1,1,0,0,0],[0,0,0,0,0,1,0,0,0]
-];
+function getFoodIconShape(){
+  return [
+    [0,0,1,1,1,1,0,0,0],[0,1,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,0],[0,0,1,1,1,1,1,1,0],
+    [0,0,0,1,1,1,1,0,0],[0,0,0,0,1,1,0,0,0],[0,0,0,0,1,1,0,0,0],[0,0,0,0,0,1,0,0,0]
+  ];
+}
 
 function drawFoodOutline(ctx,full,half){
   const edgeA="#ffe56f";
   const edgeB="#d8a92a";
-  for(let r=0;r<FOOD_ICON_SHAPE.length;r++)for(let c=0;c<FOOD_ICON_SHAPE[r].length;c++){
-    if(!FOOD_ICON_SHAPE[r][c])continue;
+  const shape=getFoodIconShape();
+  for(let r=0;r<shape.length;r++)for(let c=0;c<shape[r].length;c++){
+    if(!shape[r][c])continue;
     if(half&&c>=4&&r<4&&!full)continue;
     const edge=
-      r===0||r===FOOD_ICON_SHAPE.length-1||c===0||c===FOOD_ICON_SHAPE[r].length-1||
-      !FOOD_ICON_SHAPE[r-1]?.[c]||!FOOD_ICON_SHAPE[r+1]?.[c]||!FOOD_ICON_SHAPE[r]?.[c-1]||!FOOD_ICON_SHAPE[r]?.[c+1];
+      r===0||r===shape.length-1||c===0||c===shape[r].length-1||
+      !shape[r-1]?.[c]||!shape[r+1]?.[c]||!shape[r]?.[c-1]||!shape[r]?.[c+1];
     if(!edge)continue;
     ctx.fillStyle=(r<=1)?edgeA:edgeB;
     ctx.fillRect(c,r,1,1);
