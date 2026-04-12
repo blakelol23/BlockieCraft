@@ -345,6 +345,11 @@
     }
     .bar-group{display:flex;gap:1px;flex-wrap:nowrap;flex-shrink:0}
     .bar-group.low{animation:lowPulse 0.7s steps(2,end) infinite}
+    .hunger-stack{position:relative;display:flex;align-items:center;justify-content:flex-start;flex-shrink:0}
+    #saturationBar{
+      position:absolute;left:0;top:0;display:flex;gap:1px;flex-wrap:nowrap;
+      pointer-events:none;z-index:2;opacity:.98;filter:drop-shadow(0 0 1px rgba(255,215,72,.28));
+    }
     @keyframes lowPulse{
       0%{transform:translateX(0);filter:brightness(1)}
       25%{transform:translateX(-1px);filter:brightness(1.1)}
@@ -823,7 +828,10 @@
     <div id="airBarWrap"><div id="airBar"></div></div>
     <div id="statusBars">
       <div class="bar-group" id="healthBar"></div>
-      <div class="bar-group" id="hungerBar"></div>
+      <div class="hunger-stack">
+        <div class="bar-group" id="hungerBar"></div>
+        <div class="bar-group" id="saturationBar"></div>
+      </div>
     </div>
     <div id="xpBarWrap">
       <div id="xpLevelLabel">0</div>
@@ -1843,6 +1851,7 @@ const $airBarWrap=document.getElementById("airBarWrap");
 const $airBar=document.getElementById("airBar");
 const $healthBar=document.getElementById("healthBar");
 const $hungerBar=document.getElementById("hungerBar");
+const $saturationBar=document.getElementById("saturationBar");
 const $xpBarWrap=document.getElementById("xpBarWrap");
 const $xpFill=document.getElementById("xpFill");
 const $xpLevelLabel=document.getElementById("xpLevelLabel");
@@ -4560,6 +4569,7 @@ function applyRuntimeWorldState(state){
   tryRestorePendingMobs();
 
   if(Number.isFinite(p.selIdx))player.selIdx=THREE.MathUtils.clamp(Math.round(p.selIdx),0,8);
+  player.saturation=Math.min(player.saturation,player.hunger);
   const sx=Math.floor(player.pos.x),sy=Math.floor(player.pos.y)-1,sz=Math.floor(player.pos.z);
   if(!isSpawnCandidateSafe(sx,sy,sz,false)){
     const safe=findSpawn(sx,sz);
@@ -6176,11 +6186,21 @@ function updateCamera(dt){
 //  Walk bob: sin wave tied to player.bobT
 //  View bob: synced via same bobT
 // ═══════════════════════════════
+function getEatPose(){
+  return iState.eating?Math.sin(THREE.MathUtils.clamp(iState.eatT/1.6,0,1)*Math.PI):0;
+}
 function updateFPArm(dt){
   const {shoulderPivot,hBlock,hTorch,hBucket,hIcon}=fpArm.userData;
   fpArm.visible=(player.mode==="first");
   const _fhs=hotbarSlots[player.selIdx];const selId=_fhs?_fhs.id:BLOCK.AIR;
   const held=heldRenderFlags(selId);
+  const eatPose=getEatPose();
+  const eatReach=eatPose*0.12;
+  const eatLift=eatPose*0.20;
+  const eatTwist=eatPose*0.72;
+  const swingScale=1-eatPose*0.48;
+  const holdBob=Math.sin(clock.elapsedTime*1.35)*0.004+Math.sin(player.bobT*0.42)*0.003;
+  const holdRoll=Math.sin(clock.elapsedTime*0.88)*0.01;
 
   hBlock.visible=held.block;
   hTorch.visible=held.torch;
@@ -6199,7 +6219,7 @@ function updateFPArm(dt){
   iState.attackT=Math.min(iState.attackT+dt,0.45);
   const attackProgress=Math.min(1,iState.attackT/0.32);
   // Smooth symmetric sine — gentle ease-in, peak, ease-out (no sqrt snap)
-  const swing=Math.sin(attackProgress*Math.PI);
+  const swing=Math.sin(attackProgress*Math.PI)*swingScale;
   const swingX=swing*THREE.MathUtils.degToRad(30);
   const swingY=swing*THREE.MathUtils.degToRad(8);
   const swingZ=swing*THREE.MathUtils.degToRad(7);
@@ -6221,27 +6241,27 @@ function updateFPArm(dt){
 
   // ── Apply ──
   shoulderPivot.position.set(
-    0.72 - swing*.10,
-    -0.78 + swing*.05 - walkBobY,
-    -0.82 - swing*.15
+    0.72 - swing*.10 + eatReach,
+    -0.78 + swing*.05 - walkBobY + eatLift,
+    -0.82 - swing*.15 + eatPose*.06
   );
   shoulderPivot.rotation.set(
-    Math.PI-1.00 - swingX + walkBobX + idle + ps*.28,
-    -0.35 - swingY,
-    0.22 - swingZ + walkBobZ
+    Math.PI-1.00 - swingX + walkBobX + idle + ps*.28 + eatTwist,
+    -0.35 - swingY + eatPose*.20,
+    0.22 - swingZ + walkBobZ - eatPose*.40
   );
 
-  hBlock.position.set(-0.08-swing*.02,-0.76-swing*.04,-0.22-Math.abs(swing)*.02);
-  hBlock.rotation.set(-0.08-swing*.18-ps*.08,0.70,0.10+swing*.08);
+  hBlock.position.set(-0.08-swing*.02+eatPose*.04+holdBob,-0.76-swing*.04-eatPose*.10+holdBob*.6,-0.22-Math.abs(swing)*.02+eatPose*.08);
+  hBlock.rotation.set(-0.08-swing*.18-ps*.08-eatPose*.22,0.70+eatPose*.28,0.10+swing*.08-eatPose*.12+holdRoll);
 
-  hTorch.position.set(-0.07-swing*.03,-0.77-swing*.05,-0.21-Math.abs(swing)*.03);
-  hTorch.rotation.set(-0.30-swing*.28-ps*.06,0.75,0.02+swing*.10);
+  hTorch.position.set(-0.07-swing*.03+eatPose*.04+holdBob,-0.77-swing*.05-eatPose*.10+holdBob*.6,-0.21-Math.abs(swing)*.03+eatPose*.08);
+  hTorch.rotation.set(-0.30-swing*.28-ps*.06-eatPose*.22,0.75+eatPose*.26,0.02+swing*.10-eatPose*.12+holdRoll);
 
-  hBucket.position.set(-0.08-swing*.02,-0.74-swing*.05,-0.20-Math.abs(swing)*.03);
-  hBucket.rotation.set(-0.18-swing*.24-ps*.05,0.74,0.02+swing*.08);
+  hBucket.position.set(-0.08-swing*.02+eatPose*.04+holdBob,-0.74-swing*.05-eatPose*.10+holdBob*.6,-0.20-Math.abs(swing)*.03+eatPose*.08);
+  hBucket.rotation.set(-0.18-swing*.24-ps*.05-eatPose*.20,0.74+eatPose*.24,0.02+swing*.08-eatPose*.10+holdRoll);
 
-  hIcon.position.set(-0.09-swing*.02,-0.75-swing*.04,-0.19-Math.abs(swing)*.02);
-  hIcon.rotation.set(-0.22-swing*.16-ps*.03,0.86,0.04+swing*.07);
+  hIcon.position.set(-0.09-swing*.02+eatPose*.05+holdBob,-0.75-swing*.04-eatPose*.12+holdBob*.6,-0.19-Math.abs(swing)*.02+eatPose*.10);
+  hIcon.rotation.set(-0.22-swing*.16-ps*.03-eatPose*.26,0.86+eatPose*.22,0.04+swing*.07-eatPose*.14+holdRoll);
 }
 
 // ═══════════════════════════════
@@ -6305,7 +6325,11 @@ function animatePlayerModel(dt){
   const idleBreath = hs < 0.3 ? Math.sin(clock.elapsedTime * 1.6) * 0.022 : 0;
   const idleSwayX = hs < 0.3 ? Math.sin(clock.elapsedTime * 0.9) * 0.012 : 0;
   const idleSwayZ = hs < 0.3 ? Math.sin(clock.elapsedTime * 1.1 + 0.5) * 0.008 : 0;
-  md.lAP.rotation.x=sw+brk+pl+idleBreath;md.lAP.rotation.y=-0.08-pl*.06+idleSwayZ;md.lAP.rotation.z=sneak?-.22:(-.08+pl*.12+idleSwayX);
+  const eatPose=getEatPose();
+  const eatArm=eatPose*0.95;
+  const holdBob=Math.sin(clock.elapsedTime*1.05)*0.01;
+  const holdRoll=Math.sin(clock.elapsedTime*0.72)*0.02;
+  md.lAP.rotation.x=sw+brk+pl+idleBreath+eatArm*.92;md.lAP.rotation.y=-0.08-pl*.06+idleSwayZ+eatArm*.24;md.lAP.rotation.z=sneak?-.22:(-.08+pl*.12+idleSwayX)-eatArm*.30;
   md.rAP.rotation.set(-sw-idleBreath,0+idleSwayZ,sneak?.22:.08-idleSwayX);
 
   // Legs
@@ -6332,18 +6356,22 @@ function animatePlayerModel(dt){
   }
 
   md.hBlock.position.set(0,-11*P+pl*.03,3.5*P);
-  md.hBlock.rotation.set(-.20-brk*.22+pl*.12,.42,.12-brk*.18);
+  md.hBlock.position.y+=eatArm*.06+holdBob;md.hBlock.position.z+=eatArm*.10;
+  md.hBlock.rotation.set(-.20-brk*.22+pl*.12-eatArm*.22,.42+eatArm*.20,.12-brk*.18-eatArm*.08+holdRoll);
   if(md.hTorch){
     md.hTorch.position.set(0,-11*P+pl*.03,3.6*P);
-    md.hTorch.rotation.set(-0.35-brk*.20+pl*.10,0.35,0.08-brk*.10);
+    md.hTorch.position.y+=eatArm*.06+holdBob;md.hTorch.position.z+=eatArm*.10;
+    md.hTorch.rotation.set(-0.35-brk*.20+pl*.10-eatArm*.22,0.35+eatArm*.20,0.08-brk*.10-eatArm*.06+holdRoll);
   }
   if(md.hBucket){
     md.hBucket.position.set(0,-10.7*P+pl*.03,3.45*P);
-    md.hBucket.rotation.set(-0.16-brk*.16+pl*.08,0.52,0.12-brk*.07);
+    md.hBucket.position.y+=eatArm*.06+holdBob;md.hBucket.position.z+=eatArm*.10;
+    md.hBucket.rotation.set(-0.16-brk*.16+pl*.08-eatArm*.20,0.52+eatArm*.18,0.12-brk*.07-eatArm*.05+holdRoll);
   }
   if(md.hIcon){
     md.hIcon.position.set(0,-11.2*P+pl*.03,3.7*P);
-    md.hIcon.rotation.set(-0.38-brk*.14+pl*.08,0.46,0.12-brk*.06);
+    md.hIcon.position.y+=eatArm*.08+holdBob;md.hIcon.position.z+=eatArm*.12;
+    md.hIcon.rotation.set(-0.38-brk*.14+pl*.08-eatArm*.26,0.46+eatArm*.24,0.12-brk*.06-eatArm*.08+holdRoll);
   }
 
   playerModel.visible=(player.mode==="third"||player.mode==="front");
@@ -7055,7 +7083,10 @@ function updatePlayer(dt){
     player.vel.set(0,0,0);
     player.onGround=false;
   }
-  if(player.sprinting&&hd>0.0001)addExhaustion(hd*(inWater?0.04:0.1));
+  if(hd>0.0001){
+    if(player.sprinting)addExhaustion(hd*(inWater?0.04:0.1));
+    else if(hasMoveInput&&player.onGround&&!player.sneaking&&!inWater)addExhaustion(hd*0.01);
+  }
   updateSurvival(dt);
   if(hd>.0001){
     if(player.onGround)player.bobT+=hd*(player.sneaking?2.8:4.2);
@@ -7323,6 +7354,7 @@ function moveAxis(ax,amt,subDiag=null){
 function damagePlayer(amount,reason="hurt"){
   if(player.creative&&reason!=="kill")return;
   player.health=Math.max(0,player.health-amount);
+  if(amount>0&&reason!=="kill"&&reason!=="starve")addExhaustion(Math.min(4,amount*2));
   if(reason==="cactus")showMsg("Cactus prick",380);
   else if(reason==="fall")showMsg("Ouch!",650);
   else if(reason==="starve")showMsg("You are starving",750);
@@ -7374,10 +7406,12 @@ function updateSurvival(dt){
 
   if(player.hunger>=18&&player.health<player.maxHealth){
     player.regenTick+=dt;
-    if(player.regenTick>=4){
+    const regenDelay=player.saturation>0?2.2:4;
+    if(player.regenTick>=regenDelay){
       player.regenTick=0;
       player.health=Math.min(player.maxHealth,player.health+1);
-      addExhaustion(6);
+      if(player.saturation>0)player.saturation=Math.max(0,player.saturation-1);
+      else player.hunger=Math.max(0,player.hunger-1);
     }
   } else {
     player.regenTick=0;
@@ -10226,6 +10260,7 @@ function isEdibleSlot(slot){
 }
 function addExhaustion(amount){
   if(player.creative||amount<=0)return;
+  player.saturation=Math.min(player.saturation,player.hunger);
   player.exhaustion+=amount;
   while(player.exhaustion>=4){
     player.exhaustion-=4;
@@ -10244,7 +10279,7 @@ function consumeHeldFood(){
   if(!info||!info.food)return false;
   if(player.hunger>=player.maxHunger)return false;
   player.hunger=Math.min(player.maxHunger,player.hunger+info.food);
-  player.saturation=Math.min(player.maxHunger,player.saturation+(info.saturation??0));
+  player.saturation=Math.min(player.hunger,player.saturation+(info.saturation??0));
   slot.count--;
   if(slot.count<=0)hotbarSlots[player.selIdx]=null;
   buildHotbarUI();
@@ -10267,7 +10302,7 @@ function showMsg(text,ms=1200){
 // ═══════════════════════════════
 //  HEALTH & HUNGER BARS
 // ═══════════════════════════════
-var _prevHealth=-1,_prevMaxHealth=-1,_prevHunger=-1,_prevMaxHunger=-1,_prevXp=-1,_prevXpLvl=-1,_prevAir=-1,_prevAirShow=false;
+var _prevHealth=-1,_prevMaxHealth=-1,_prevHunger=-1,_prevMaxHunger=-1,_prevSat=-1,_prevXp=-1,_prevXpLvl=-1,_prevAir=-1,_prevAirShow=false;
 // XP thresholds by level (Minecraft-like: level 0-15 need 2×level+7 XP each)
 function xpToNextLevel(lvl){return lvl<16?2*lvl+7:(lvl<31?5*lvl-38:9*lvl-158);}
 function giveXp(amount,silent=false){
@@ -10283,6 +10318,7 @@ function updateStatusBars(){
   $airBarWrap.style.display=showAir?"flex":"none";
   $healthBar.style.display=show?"flex":"none";
   $hungerBar.style.display=show?"flex":"none";
+  $saturationBar.style.display=show?"flex":"none";
   $xpBarWrap.style.display=show?"flex":"none";
   $healthBar.classList.toggle("low",show&&!player.creative&&player.health<=6);
   if(showAir){
@@ -10301,6 +10337,11 @@ function updateStatusBars(){
   if(player.hunger!==_prevHunger||player.maxHunger!==_prevMaxHunger){
     _prevHunger=player.hunger;_prevMaxHunger=player.maxHunger;
     drawHearts($hungerBar,player.hunger,player.maxHunger,1);
+  }
+  const sat=THREE.MathUtils.clamp(Math.round(Math.min(player.maxHunger,player.hunger,Math.max(0,player.saturation))*2)/2,0,player.maxHunger);
+  if(sat!==_prevSat||player.maxHunger!==_prevMaxHunger){
+    _prevSat=sat;
+    drawHearts($saturationBar,sat,player.maxHunger,1,"outline");
   }
   if(player.xp!==_prevXp||player.xpLevel!==_prevXpLvl){
     _prevXp=player.xp;_prevXpLvl=player.xpLevel;
@@ -10344,7 +10385,7 @@ function updateHudOverlays(){
     ?"linear-gradient(90deg,#8fe13b,#d6ff7a)"
     :"linear-gradient(90deg,#e26f24,#ffd66a)";
 }
-function drawHearts(el,val,max,type){
+function drawHearts(el,val,max,type,mode="fill"){
   el.innerHTML="";
   const hearts=max/2;
   const SC=2; // scale 2× for bigger icons
@@ -10354,6 +10395,7 @@ function drawHearts(el,val,max,type){
     ctx.scale(SC,SC);
     const full=val>=(i*2+2),half=!full&&val>=(i*2+1);
     if(type===0) drawHeart(ctx,full,half);
+    else if(mode==="outline") drawFoodOutline(ctx,full,half);
     else drawFood(ctx,full,half);
     el.appendChild(cv);
   }
@@ -10426,16 +10468,32 @@ function drawHeart(ctx,full,half){
 }
 function drawFood(ctx,full,half){
   // Chicken leg / food icon (simplified)
-  const food=[
-    [0,0,1,1,1,1,0,0,0],[0,1,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,0],[0,0,1,1,1,1,1,1,0],
-    [0,0,0,1,1,1,1,0,0],[0,0,0,0,1,1,0,0,0],[0,0,0,0,1,1,0,0,0],[0,0,0,0,0,1,0,0,0]
-  ];
   const col=full?"#c8782a":half?"#c8782a":"#444";
   const hl=full?"#e8a85a":half?"#e8a85a":"#333";
-  for(let r=0;r<food.length;r++)for(let c=0;c<food[r].length;c++){
-    if(!food[r][c])continue;
+  for(let r=0;r<FOOD_ICON_SHAPE.length;r++)for(let c=0;c<FOOD_ICON_SHAPE[r].length;c++){
+    if(!FOOD_ICON_SHAPE[r][c])continue;
     ctx.fillStyle=(r<=1)?hl:col;
     if(half&&c>=4&&r<4&&!full)ctx.fillStyle="#333";
+    ctx.fillRect(c,r,1,1);
+  }
+}
+
+const FOOD_ICON_SHAPE=[
+  [0,0,1,1,1,1,0,0,0],[0,1,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,0],[0,0,1,1,1,1,1,1,0],
+  [0,0,0,1,1,1,1,0,0],[0,0,0,0,1,1,0,0,0],[0,0,0,0,1,1,0,0,0],[0,0,0,0,0,1,0,0,0]
+];
+
+function drawFoodOutline(ctx,full,half){
+  const edgeA="#ffe56f";
+  const edgeB="#d8a92a";
+  for(let r=0;r<FOOD_ICON_SHAPE.length;r++)for(let c=0;c<FOOD_ICON_SHAPE[r].length;c++){
+    if(!FOOD_ICON_SHAPE[r][c])continue;
+    if(half&&c>=4&&r<4&&!full)continue;
+    const edge=
+      r===0||r===FOOD_ICON_SHAPE.length-1||c===0||c===FOOD_ICON_SHAPE[r].length-1||
+      !FOOD_ICON_SHAPE[r-1]?.[c]||!FOOD_ICON_SHAPE[r+1]?.[c]||!FOOD_ICON_SHAPE[r]?.[c-1]||!FOOD_ICON_SHAPE[r]?.[c+1];
+    if(!edge)continue;
+    ctx.fillStyle=(r<=1)?edgeA:edgeB;
     ctx.fillRect(c,r,1,1);
   }
 }
