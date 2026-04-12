@@ -955,7 +955,7 @@ const TOOL={WOOD_PICK:100,STONE_PICK:101,WOOD_AXE:102,STONE_AXE:103,WOOD_SHOVEL:
             IRON_PICK:106};
 // Raw material item IDs (>=200)
 const ITEM={STICK:200,WATER_SOURCE:201,APPLE:202,BREAD:203,COOKED_PORKCHOP:204,
-            COAL:205,IRON_INGOT:206,GOLD_INGOT:207,DIAMOND:208};
+            RAW_MEAT:209,COAL:205,IRON_INGOT:206,GOLD_INGOT:207,DIAMOND:208};
 const S={
   seed:48151623,chunkSize:16,worldH:64,waterLevel:18,
   worldPreset:"balanced",
@@ -1034,7 +1034,7 @@ const RESOURCE_PACK_BLOCK_KEYS=[
   "furnace_front","furnace_side","furnace_top"
 ];
 const RESOURCE_PACK_ITEM_KEYS=[
-  "stick","water_bucket","apple","bread","cooked_porkchop",
+  "stick","water_bucket","apple","bread","cooked_porkchop","porkchop",
   "wooden_pickaxe","stone_pickaxe","iron_pickaxe",
   "wooden_axe","stone_axe","wooden_shovel","stone_shovel",
   "coal","iron_ingot","gold_ingot","diamond"
@@ -1572,6 +1572,7 @@ const ITEM_INFO={
   [ITEM.APPLE]:{name:"Apple",color:0xd02020,food:4,saturation:2.4},
   [ITEM.BREAD]:{name:"Bread",color:0xc89a4c,food:5,saturation:6.0},
   [ITEM.COOKED_PORKCHOP]:{name:"Cooked Porkchop",color:0xa85a3e,food:8,saturation:12.8},
+  [ITEM.RAW_MEAT]:{name:"Raw Meat",color:0xbf6b56,food:3,saturation:4.0},
   [ITEM.COAL]:{name:"Coal",color:0x2d2d2d},
   [ITEM.IRON_INGOT]:{name:"Iron Ingot",color:0xd8dce2},
   [ITEM.GOLD_INGOT]:{name:"Gold Ingot",color:0xf2d154},
@@ -2521,6 +2522,7 @@ const FURNACE_RECIPES={
   [BLOCK.SAND]:{out:BLOCK.GLASS,count:1,xp:1},
   [BLOCK.IRON_ORE]:{out:ITEM.IRON_INGOT,count:1,xp:2},
   [BLOCK.GOLD_ORE]:{out:ITEM.GOLD_INGOT,count:1,xp:2},
+  [ITEM.RAW_MEAT]:{out:ITEM.COOKED_PORKCHOP,count:1,xp:2},
 };
 const FURNACE_FUEL_TIME={
   [ITEM.COAL]:16,
@@ -3836,6 +3838,7 @@ function getPackItemTextureName(id){
     case ITEM.APPLE:return"apple";
     case ITEM.BREAD:return"bread";
     case ITEM.COOKED_PORKCHOP:return"cooked_porkchop";
+    case ITEM.RAW_MEAT:return"porkchop";
     case ITEM.COAL:return"coal";
     case ITEM.IRON_INGOT:return"iron_ingot";
     case ITEM.GOLD_INGOT:return"gold_ingot";
@@ -3893,6 +3896,17 @@ function drawItemIcon(ctx,id){
       ctx.fillRect(4,5,8,1);
       ctx.fillStyle="rgba(120,70,20,0.35)";
       ctx.fillRect(5,8,1,3);ctx.fillRect(8,8,1,3);ctx.fillRect(11,8,1,3);
+      return;
+    }
+    if(id===ITEM.RAW_MEAT){
+      ctx.fillStyle="#5e2b22";
+      ctx.fillRect(2,6,11,6);
+      ctx.fillStyle="#cc7a67";
+      ctx.fillRect(3,5,10,5);
+      ctx.fillStyle="#f0b0a2";
+      ctx.fillRect(4,6,6,2);
+      ctx.fillStyle="#f3e3da";
+      ctx.fillRect(12,7,2,3);
       return;
     }
     if(id===ITEM.COOKED_PORKCHOP){
@@ -4779,6 +4793,7 @@ const MOB_DEFS={
     torsoWScale:1.0,torsoDScale:1.75,scaleXZ:1.0,scaleY:1.0,
     idleSound:5,soundInt:14,speed:1.28,
     maxHp:10,maxSafeDrop:3,
+    drop:{id:ITEM.RAW_MEAT,min:2,max:3},
     hitbox:{w:1.06,h:1.30,d:1.08}
   },
   pig:{
@@ -4787,6 +4802,7 @@ const MOB_DEFS={
     torsoWScale:1.0,torsoDScale:1.0,scaleXZ:0.92,scaleY:0.9,
     idleSound:6,soundInt:12,speed:1.22,
     maxHp:10,maxSafeDrop:3,
+    drop:{id:ITEM.RAW_MEAT,min:1,max:2},
     hitbox:{w:0.94,h:0.94,d:0.98}
   },
   chicken:{
@@ -4795,6 +4811,7 @@ const MOB_DEFS={
     torsoWScale:1.0,torsoDScale:1.0,scaleXZ:0.56,scaleY:0.72,
     idleSound:8,soundInt:10,speed:1.35,
     maxHp:4,maxSafeDrop:2,
+    drop:{id:ITEM.RAW_MEAT,min:1,max:1},
     hitbox:{w:0.62,h:0.82,d:0.62}
   },
   sheep:{
@@ -4804,6 +4821,7 @@ const MOB_DEFS={
     woolPad:2.5,headWoolPad:1.9,
     idleSound:5,soundInt:16,speed:1.18,
     maxHp:8,maxSafeDrop:3,
+    drop:{id:ITEM.RAW_MEAT,min:1,max:1},
     hitbox:{w:1.00,h:1.24,d:1.20}
   }
 };
@@ -5265,6 +5283,7 @@ function spawnMob(type,x,y,z,opts={}){
     idleT:0.8+Math.random()*2.2,
     state:"idle",
     flashT:0,
+    dropSpawned:false,
     jumpCd:0,
     stepCommitT:0,
     stepDir:new THREE.Vector3(),
@@ -5305,6 +5324,29 @@ function _removeMob(mob){
   return true;
 }
 
+function _mobDropRange(spec){
+  const min=Math.max(1,Math.floor(Number(spec?.min) || 1));
+  const max=Math.max(min,Math.floor(Number(spec?.max) || min));
+  return min+Math.floor(Math.random()*(max-min+1));
+}
+
+function spawnMobDrops(mob){
+  if(!mob||mob.dropSpawned)return;
+  const spec=mob.def?.drop;
+  if(!spec?.id)return;
+  const count=_mobDropRange(spec);
+  const dropY=(mob.pos?.y??0)+(mob.hitH??1)*0.58;
+  for(let i=0;i<count;i++){
+    spawnDropItem(
+      spec.id,
+      (mob.pos?.x??0)+(Math.random()-.5)*0.35,
+      dropY+Math.random()*0.12,
+      (mob.pos?.z??0)+(Math.random()-.5)*0.35
+    );
+  }
+  mob.dropSpawned=true;
+}
+
 function damageMob(mob,amount,cause="generic"){
   if(!mob||amount<=0||mob.dying)return false;
   mob.hp=Math.max(0,(mob.hp??mob.maxHp??8)-amount);
@@ -5312,6 +5354,7 @@ function damageMob(mob,amount,cause="generic"){
     mob.hp=0;
     mob.dying=true;
     mob.deathT=0;
+    mob.dropSpawned=false;
     mob.state="dead";
     mob.vel.set((mob.vel.x||0)*0.18,Math.max(mob.vel.y||0,2.4),(mob.vel.z||0)*0.18);
     mob.flashT=0;
@@ -5678,7 +5721,10 @@ function updateMobs(dt){
       const sx=Math.max(0.01,(mob.scaleXZ||1)*(1-ease*0.78));
       const sy=Math.max(0.01,(mob.scaleY||1)*(1-ease*0.92));
       mob.mesh.scale.set(sx,sy,sx);
-      if(t>=1)_removeMob(mob);
+      if(t>=1){
+        spawnMobDrops(mob);
+        _removeMob(mob);
+      }
       continue;
     }
     // Flash reset
@@ -8410,6 +8456,17 @@ function seedChunks(){
 function streamChunks(){
   const ox=Math.floor(player.pos.x/S.chunkSize),oz=Math.floor(player.pos.z/S.chunkSize);
   const radius=effectiveStreamRadius();
+  const pressure=chunkQueuePressure();
+  const ud=radius+((radius<=5&&pressure<=desiredGenQueueCap()*0.7)?1:0);
+  const toUnload=[];
+  for(const[k,c]of chunkMap){
+    if(!chunkInRange(c.cx,c.cz,ox,oz,ud))toUnload.push(k);
+  }
+  for(let i=0;i<toUnload.length;i++)unloadChunk(toUnload[i]);
+  compactGenQueueToRange(ox,oz,ud);
+  trimGenQueueToCap(ox,oz);
+  compactDirtyQueueToLoaded();
+  trimDirtyQueueToCap(ox,oz);
 
   if(ox===lastStreamOx&&oz===lastStreamOz){
     if(genQueue.length<Math.max(8,Math.floor(desiredGenQueueCap()*0.32))){
@@ -8422,20 +8479,6 @@ function streamChunks(){
 
   // Queue missing chunks in bounded batches near the player.
   queueMissingChunksNear(ox,oz,Math.max(desiredStreamTopupCap(),Math.floor(desiredGenQueueCap()*0.6)),radius);
-
-  // Unload chunks beyond render distance + 1 buffer (prevents boundary thrashing)
-  const pressure=chunkQueuePressure();
-  const ud=radius+((radius<=5&&pressure<=desiredGenQueueCap()*0.7)?1:0);
-  const toUnload=[];
-  for(const[k,c]of chunkMap){
-    if(!chunkInRange(c.cx,c.cz,ox,oz,ud))toUnload.push(k);
-  }
-  for(let i=0;i<toUnload.length;i++)unloadChunk(toUnload[i]);
-  // Purge stale genQueue entries beyond unload distance
-  compactGenQueueToRange(ox,oz,ud);
-  trimGenQueueToCap(ox,oz);
-  compactDirtyQueueToLoaded();
-  trimDirtyQueueToCap(ox,oz);
 }
 function queueChunk(cx,cz,force=false){
   const k=ck(cx,cz);if(chunkMap.has(k)||genSet.has(k))return false;
@@ -8979,7 +9022,8 @@ function _chunkOcclusionEnabled(){
   if(Math.hypot(player.vel.x,player.vel.z)>S.walkSpeed*1.2)return false;
   if(headInWater())return false;
   if(camera.position.y<=S.waterLevel+2)return false;
-  if(Math.abs(player.pitch)>1.35)return false;
+  camera.getWorldDirection(_chunkVec);
+  if(Math.abs(_chunkVec.y)>0.65)return false;
   return true;
 }
 
@@ -9960,18 +10004,34 @@ function jit(hex,amt,salt){
 // initMaterials(), then creates the two shared atlas materials (opaque and
 // alpha-tested) and fills blockFaceUVs[blockId][faceIdx]=[u0,v0,u1,v1].
 function buildBlockAtlas(){
-  const TILE=16,COLS=8;
+  const TILE=16,COLS=8,PAD=2,CELL=TILE+PAD*2;
   const texSet=new Map();let slotCount=0;
   for(const faceArr of Object.values(mats)){
     for(const mat of faceArr){if(mat.map&&!texSet.has(mat.map))texSet.set(mat.map,slotCount++);}
   }
   const ROWS=Math.ceil(slotCount/COLS);
-  const W=COLS*TILE,H=ROWS*TILE;
+  const W=COLS*CELL,H=ROWS*CELL;
   const canv=document.createElement('canvas');canv.width=W;canv.height=H;
   const ctx=canv.getContext('2d');
-  for(const[t,i]of texSet){const col=i%COLS,row=(i/COLS)|0;ctx.drawImage(t.image,col*TILE,row*TILE,TILE,TILE);}
+  ctx.imageSmoothingEnabled=false;
+  const blit=(src,dx,dy)=>{
+    ctx.drawImage(src,0,0,TILE,TILE,dx+PAD,dy+PAD,TILE,TILE);
+    ctx.drawImage(src,0,0,TILE,1,dx+PAD,dy,TILE,PAD);
+    ctx.drawImage(src,0,TILE-1,TILE,1,dx+PAD,dy+PAD+TILE,TILE,PAD);
+    ctx.drawImage(src,0,0,1,TILE,dx,dy+PAD,PAD,TILE);
+    ctx.drawImage(src,TILE-1,0,1,TILE,dx+PAD+TILE,dy+PAD,PAD,TILE);
+    ctx.drawImage(src,0,0,1,1,dx,dy,PAD,PAD);
+    ctx.drawImage(src,TILE-1,0,1,1,dx+PAD+TILE,dy,PAD,PAD);
+    ctx.drawImage(src,0,TILE-1,1,1,dx,dy+PAD+TILE,PAD,PAD);
+    ctx.drawImage(src,TILE-1,TILE-1,1,1,dx+PAD+TILE,dy+PAD+TILE,PAD,PAD);
+  };
+  for(const[t,i]of texSet){const col=i%COLS,row=(i/COLS)|0;blit(t.image,col*CELL,row*CELL);}
   const atlasT=new THREE.CanvasTexture(canv);
-  atlasT.colorSpace=THREE.SRGBColorSpace;atlasT.magFilter=atlasT.minFilter=THREE.NearestFilter;atlasT.generateMipmaps=false;
+  atlasT.colorSpace=THREE.SRGBColorSpace;
+  atlasT.magFilter=THREE.NearestFilter;
+  atlasT.minFilter=THREE.LinearMipmapLinearFilter;
+  atlasT.generateMipmaps=true;
+  try{atlasT.anisotropy=Math.min(4,renderer.capabilities?.getMaxAnisotropy?.()||1);}catch(e){}
   atlasMat=new THREE.MeshStandardMaterial({map:atlasT,color:0xffffff,roughness:0.92,metalness:0,toneMapped:false});
   // Face-direction brightness: top faces 100%, sides 78%, bottom 62%
   // This gives the classic Minecraft 3D blocky look — makes terrain cohesive, not a grid of flat tiles
@@ -10039,19 +10099,21 @@ function buildBlockAtlas(){
   };
       waterMergeMat.customProgramCacheKey=()=>'water-v6';
   const invW=1/W,invH=1/H;
-  // Inset UVs 1px inward from each tile boundary.
-  // Without this, NearestFilter samples floor(u*W) which at u=u1 = (col+1)*TILE/W gives
-  // the FIRST texel of the NEXT atlas tile (could be leaves/glass = transparent → visible holes).
   const atlasInsetPx=1;
-  const hW=atlasInsetPx*invW,hH=atlasInsetPx*invH;
+  const innerMin=PAD+atlasInsetPx;
+  const innerMax=PAD+TILE-atlasInsetPx;
   for(const[ids,faceArr]of Object.entries(mats)){
     const id=+ids;
     blockFaceUVs[id]=faceArr.map(mat=>{
-      if(!mat.map||!texSet.has(mat.map))return[hW,hH,TILE*invW-hW,TILE*invH-hH];
+      if(!mat.map||!texSet.has(mat.map)){
+        const u0=(innerMin)*invW,u1=(innerMax)*invW;
+        const v0=1-(innerMax)*invH,v1=1-(innerMin)*invH;
+        return[u0,v0,u1,v1];
+      }
       const i=texSet.get(mat.map);const col=i%COLS,row=(i/COLS)|0;
-      const u0=col*TILE*invW+hW, u1=(col+1)*TILE*invW-hW;
-      // Three.js UV origin = bottom-left; canvas origin = top-left. Flip Y.
-      const v0=1-(row+1)*TILE*invH+hH, v1=1-row*TILE*invH-hH;
+      const baseX=col*CELL,baseY=row*CELL;
+      const u0=(baseX+innerMin)*invW,u1=(baseX+innerMax)*invW;
+      const v0=1-(baseY+innerMax)*invH,v1=1-(baseY+innerMin)*invH;
       return[u0,v0,u1,v1];
     });
   }
