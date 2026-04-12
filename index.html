@@ -1860,8 +1860,8 @@
     let menuMoonOrb=null;
     let menuMoonGlow=null;
     let menuStarDome=null;
-    let menuSkyPhase=0.18;
-    const MENU_SKY_CYCLE_SECONDS=180;
+    let menuSkyPhase=0.48;
+    const MENU_SKY_CYCLE_SECONDS=1200;
     const _menuSkyDir=new THREE.Vector3();
     const _menuSkyOpp=new THREE.Vector3();
     const _menuSunPos=new THREE.Vector3();
@@ -2124,7 +2124,7 @@ uniform float uStrength;
 void main(){
   vec2 p=vUv-0.5;
   float d=length(p)*2.0;
-  float core=smoothstep(0.86,0.0,d);
+  float core=1.0-smoothstep(0.0,0.86,d);
   float halo=smoothstep(1.0,0.22,d);
   float aura=smoothstep(1.0,0.58,d)*0.28;
   float alpha=(core*core*0.78+halo*0.20+aura)*uStrength;
@@ -2579,7 +2579,7 @@ void main(){
       clearMenuColumnCache();
       applyMenuSkybox(noiseSeedOffset);
       ensureMenuCelestialRig();
-      menuSkyPhase=0.18+(h2(13,17,942)-0.5)*0.04;
+      menuSkyPhase=0.48+(h2(13,17,942)-0.5)*0.05;
       updateMenuCelestials(0);
 
       const minX=MENU_BG_MIN_X;
